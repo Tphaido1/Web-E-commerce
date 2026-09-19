@@ -1,0 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Manrope:wght@600;700;800&display=swap');
+
+:root { --paper: #fffcf7; --ink: #182e28; --muted: #60716a; --coral: #d96d58; --line: #e7e1d7; --display-font: 'Manrope', sans-serif; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; color: var(--ink); background: var(--paper); font-family: 'DM Sans', sans-serif; }
+button, input { font: inherit; }
+a { text-decoration: none; transition: color 160ms ease, background-color 160ms ease, transform 160ms ease; }
+button { transition: color 160ms ease, background-color 160ms ease, transform 160ms ease; }
+.placeholder-page { display: grid; min-height: 60vh; place-items: center; align-content: center; gap: .5rem; text-align: center; }.placeholder-page h1 { font-family: var(--display-font); }.placeholder-page p { color: var(--muted); }
