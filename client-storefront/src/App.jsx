@@ -1,18 +1,27 @@
-/**
- * App.jsx (Storefront)
- * ------------------------------------------------------------
- * Component gốc của ứng dụng Storefront (dành cho Khách hàng).
- * Ở Tuần 1 chỉ là Boilerplate xác nhận app đã dựng thành công.
- * Các tuần sau sẽ thêm React Router, gọi API qua axios (server/.env: CLIENT_URL).
- * ------------------------------------------------------------
- */
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import Home from './pages/Home/Home.jsx';
+import Login from './pages/Login/Login.jsx';
+import Register from './pages/Register/Register.jsx';
+import Products from './pages/Products/Products.jsx';
+import Cart from './pages/Cart/Cart.jsx';
+import { CartProvider } from './context/CartContext.jsx';
+import './styles/global.css';
 
 function App() {
   return (
-    <div style={{ fontFamily: 'sans-serif', textAlign: 'center', marginTop: '4rem' }}>
-      <h1>🛍️ Storefront App Ready</h1>
-      <p>Ứng dụng dành cho Khách hàng đã khởi tạo thành công (React + Vite).</p>
-    </div>
+    <CartProvider>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<div className="placeholder-page"><h1>Checkout</h1><p>Tính năng Checkout sẽ được triển khai ở Sprint 4.</p></div>} />
+          <Route path="*" element={<Home />} />
+        </Routes>
+      </BrowserRouter>
+    </CartProvider>
   );
 }
 
