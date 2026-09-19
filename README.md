@@ -91,10 +91,91 @@ Truy cập: `http://localhost:5174`
 
 ## 🧪 Test API với Postman
 
-Import file [`postman_collection.json`](./postman_collection.json) vào Postman (File → Import). Collection đã bao gồm biến `{{baseUrl}}` trỏ tới `http://localhost:5000/api/v1` và 2 mẫu request:
+Import file [`postman_collection.json`](./postman_collection.json) vào Postman (File → Import). Collection dùng biến `{{baseUrl}}` trỏ tới `http://localhost:5000/api/v1` và có các nhóm Healthcheck, Auth Core.
 
 - `GET /healthcheck`
+- `POST /auth/register`
 - `POST /auth/login`
+- `POST /auth/refresh-token`
+- `POST /auth/logout`
+
+## 🔐 Auth API Contract
+
+Tất cả response thành công dùng format:
+
+```json
+{
+	"status": "success",
+	"message": "...",
+	"data": {}
+}
+```
+
+### `POST /auth/register`
+
+Request:
+
+```json
+{
+	"email": "user@example.com",
+	"password": "Password123!"
+}
+```
+
+Response `201`:
+
+```json
+{
+	"status": "success",
+	"message": "Đăng ký thành công",
+	"data": {
+		"user": {
+			"id": "user_id",
+			"email": "user@example.com",
+			"role": "customer"
+		},
+		"token": "<access-jwt>",
+		"accessToken": "<access-jwt>",
+		"refreshToken": "<refresh-jwt>"
+	}
+}
+```
+
+### `POST /auth/login`
+
+Request có cùng shape với `/auth/register`. Response `200` có cùng các field `data.user`, `data.token`, `data.accessToken` và `data.refreshToken`. `data.user` và `data.token` giữ tương thích với `client-storefront/src/services/authService.js`.
+
+### `POST /auth/refresh-token`
+
+Request:
+
+```json
+{
+	"refreshToken": "<refresh-jwt>"
+}
+```
+
+Response `200` trả về `data.token`, `data.accessToken` và `data.refreshToken` mới. Refresh token được xác thực bằng `JWT_REFRESH_SECRET` và hash lưu trong MongoDB.
+
+### `POST /auth/logout`
+
+Header:
+
+```text
+Authorization: Bearer <access-jwt>
+```
+
+Response `200`:
+
+```json
+{
+	"status": "success",
+	"message": "Đăng xuất thành công",
+	"data": null
+}
+```
+
+Logout xóa hash refresh token trong database. Access token stateless hiện tại vẫn có hiệu lực cho tới khi hết hạn.
 
 ## 🌳 Quy ước Git Branch (đề xuất cho nhóm 5 người)
 
@@ -102,10 +183,18 @@ Import file [`postman_collection.json`](./postman_collection.json) vào Postman 
 - `develop`: nhánh tích hợp chung
 - `feature/<ten-thanh-vien>-<chuc-nang>`: mỗi thành viên làm việc trên nhánh riêng, VD: `feature/an-product-crud`
 
-## 📌 Việc cần làm ở Tuần 2 (gợi ý phân công)
+## 📌 Trạng thái Tuần 2-3 và việc tiếp theo
 
-- Thiết kế Schema Mongoose cho `models/` (User, Product, Order, Category...)
-- Triển khai logic thật cho `auth.routes.js` (hash password bằng `bcryptjs`, ký token bằng `jsonwebtoken`)
-- Viết middleware `auth.middleware.js` (xác thực JWT, phân quyền role)
+- Auth Core đã hoàn tất ở backend: `User.model.js`, `auth.controller.js`, `auth.middleware.js` và bốn auth endpoint dùng JWT + bcrypt thật.
+- `client-storefront/src/services/authService.js` đã có thể gọi `/auth/register` và `/auth/login`; không cần sửa client ở bước Auth Core này.
+- Backend hiện chưa có route thật cho `/products`, `/cart`, `/orders`, `/categories`; các request frontend tới các endpoint này vẫn có thể nhận `404`.
+- `client-admin/src/services/productService.js` và `categoryService.js` hiện còn dùng mock data, cần thay bằng API thật khi backend tương ứng hoàn tất.
+- `client-admin/src/services/authService.js` hiện mới dùng localStorage mock; cần chuyển sang `/auth/login` thật và kiểm tra role trước khi merge lên `main`.
+- `client-storefront/src/services/cartService.js` còn placeholder, còn `CartContext.jsx` dùng localStorage; cần refactor khi Cart API backend được triển khai.
+- Bổ sung unit/integration test cho auth, đặc biệt sai mật khẩu, token hết hạn, refresh token và duplicate email.
+
+Các hạng mục backend tiếp theo:
+
+- Thiết kế Schema Mongoose cho `models/` (Product, Order, Category...)
 - Xây dựng Controller + Service cho module Product (CRUD)
 - Thiết kế layout chính (Header, Footer, Sidebar) cho 2 Frontend

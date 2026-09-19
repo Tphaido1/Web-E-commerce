@@ -44,6 +44,11 @@ const errorHandler = (err, req, res, next) => {
     message = 'Token không hợp lệ, vui lòng đăng nhập lại';
   }
 
+  if (err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    message = 'Token đã hết hạn, vui lòng đăng nhập lại';
+  }
+
   // Log lỗi ra console (production nên tích hợp thêm Winston/Sentry)
   if (env.NODE_ENV === 'development') {
     console.error('🔥 ERROR:', err);

@@ -16,12 +16,14 @@ const env = {
   MONGO_URI: process.env.MONGO_URI,
   JWT_SECRET: process.env.JWT_SECRET,
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:5174',
 };
 
 // Danh sách các biến bắt buộc phải có, nếu thiếu sẽ dừng server ngay lập tức
-const REQUIRED_KEYS = ['MONGO_URI', 'JWT_SECRET'];
+const REQUIRED_KEYS = ['MONGO_URI', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
 
 REQUIRED_KEYS.forEach((key) => {
   if (!env[key]) {

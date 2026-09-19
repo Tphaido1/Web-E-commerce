@@ -1,13 +1,23 @@
 {
   "info": {
-    "name": "E-Commerce API - Week 1 Boilerplate",
-    "description": "Bộ sưu tập API mẫu cho dự án E-Commerce. Import file này vào Postman để test nhanh.",
+    "name": "E-Commerce API - Auth Core",
+    "description": "Auth Core thật: register, login, refresh-token và logout. Register/login đã thay logic mock.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
       "type": "string"
     }
   ],
@@ -54,7 +64,26 @@
       "name": "Auth",
       "item": [
         {
-          "name": "POST /auth/login",
+          "name": "POST /auth/register (REAL - thay mock)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Đăng ký user thật, hash password bằng bcryptjs và trả user/token."
+          }
+        },
+        {
+          "name": "POST /auth/login (REAL - thay mock)",
           "request": {
             "method": "POST",
             "header": [
@@ -69,7 +98,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["auth", "login"]
             },
-            "description": "Đăng nhập người dùng và nhận JWT token."
+            "description": "Đăng nhập user thật bằng bcrypt.compare và nhận access/refresh JWT."
           },
           "response": [
             {
@@ -95,7 +124,7 @@
               "header": [
                 { "key": "Content-Type", "value": "application/json" }
               ],
-              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Đăng nhập thành công (mock)\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"mock_user_id\",\n      \"email\": \"user@example.com\",\n      \"role\": \"customer\"\n    },\n    \"token\": \"mock.jwt.token\"\n  }\n}"
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Đăng nhập thành công\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"user_id\",\n      \"email\": \"user@example.com\",\n      \"role\": \"customer\"\n    },\n    \"token\": \"jwt.access.token\",\n    \"accessToken\": \"jwt.access.token\",\n    \"refreshToken\": \"jwt.refresh.token\"\n  }\n}"
             },
             {
               "name": "400 Bad Request - Missing fields",
@@ -123,6 +152,40 @@
               "body": "{\n  \"status\": \"error\",\n  \"message\": \"Vui lòng nhập email và mật khẩu\"\n}"
             }
           ]
+        },
+        {
+          "name": "POST /auth/refresh-token (REAL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh-token"]
+            },
+            "description": "Xác thực refresh token bằng secret riêng và cấp token mới."
+          }
+        },
+        {
+          "name": "POST /auth/logout (REAL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Yêu cầu access token và xóa refresh token hash trong database."
+          }
         }
       ]
     }
