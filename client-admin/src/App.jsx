@@ -1,21 +1,32 @@
-/**
- * App.jsx (Admin Dashboard)
- * ------------------------------------------------------------
- * Component gốc của ứng dụng Admin/Vendor Dashboard.
- * Ở Tuần 1 chỉ là Boilerplate xác nhận app đã dựng thành công,
- * kèm 1 component Ant Design (Result) để confirm thư viện UI hoạt động.
- * ------------------------------------------------------------
- */
-
-import { Result } from 'antd';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import AdminLayout from './components/AdminLayout.jsx';
+import ProtectedRoute from './components/ProtectedRoute.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import Categories from './pages/Categories.jsx';
+import Login from './pages/Login.jsx';
+import Orders from './pages/Orders.jsx';
+import Products from './pages/Products.jsx';
+import ProductDetail from './pages/ProductDetail.jsx';
+import ProductEditor from './pages/ProductEditor.jsx';
 
 function App() {
   return (
-    <Result
-      status="success"
-      title="Admin Dashboard App Ready"
-      subTitle="Ứng dụng quản trị đã khởi tạo thành công (React + Vite + Ant Design)."
-    />
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/products/new" element={<ProductEditor />} />
+          <Route path="/products/:id" element={<ProductDetail />} />
+          <Route path="/products/:id/edit" element={<ProductEditor />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/orders" element={<Orders />} />
+        </Route>
+      </Route>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 }
 
