@@ -1,13 +1,28 @@
 {
   "info": {
-    "name": "E-Commerce API - Week 1 Boilerplate",
-    "description": "Bộ sưu tập API mẫu cho dự án E-Commerce. Import file này vào Postman để test nhanh.",
+    "name": "E-Commerce API - Week 3 Cart",
+    "description": "Bộ sưu tập API cho Auth và giỏ hàng user/guest.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
       "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "507f1f77bcf86cd799439011",
+      "type": "string"
+    },
+    {
+      "key": "variantId",
+      "value": "default",
       "type": "string"
     }
   ],
@@ -95,7 +110,7 @@
               "header": [
                 { "key": "Content-Type", "value": "application/json" }
               ],
-              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Đăng nhập thành công (mock)\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"mock_user_id\",\n      \"email\": \"user@example.com\",\n      \"role\": \"customer\"\n    },\n    \"token\": \"mock.jwt.token\"\n  }\n}"
+              "body": "{\n  \"status\": \"success\",\n  \"message\": \"Đăng nhập thành công\",\n  \"data\": {\n    \"user\": {\n      \"id\": \"user_id\",\n      \"email\": \"user@example.com\",\n      \"role\": \"customer\"\n    },\n    \"accessToken\": \"jwt.access.token\",\n    \"refreshToken\": \"jwt.refresh.token\"\n  }\n}"
             },
             {
               "name": "400 Bad Request - Missing fields",
@@ -123,6 +138,100 @@
               "body": "{\n  \"status\": \"error\",\n  \"message\": \"Vui lòng nhập email và mật khẩu\"\n}"
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "Cart",
+      "item": [
+        {
+          "name": "GET /cart",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"]
+            },
+            "description": "Lấy cart user nếu có access token, nếu không dùng guestId cookie."
+          }
+        },
+        {
+          "name": "POST /cart/items",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "disabled": true }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"variantId\": \"{{variantId}}\",\n  \"quantity\": 1,\n  \"price\": 29.99\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "items"]
+            },
+            "description": "Thêm item; request guest đầu tiên sẽ nhận guestId cookie."
+          }
+        },
+        {
+          "name": "PATCH /cart/items/:productId",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "disabled": true }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": \"{{variantId}}\",\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/items/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "items", "{{productId}}"]
+            },
+            "description": "Đặt quantity mới cho item trong cart."
+          }
+        },
+        {
+          "name": "DELETE /cart/items/:productId",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "disabled": true }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variantId\": \"{{variantId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/cart/items/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart", "items", "{{productId}}"]
+            }
+          }
+        },
+        {
+          "name": "DELETE /cart",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "disabled": true }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["cart"]
+            },
+            "description": "Xóa toàn bộ item trong cart hiện tại."
+          }
         }
       ]
     }
