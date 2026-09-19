@@ -21,7 +21,9 @@ const notFoundHandler = (req, res, next) => {
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
-  let message = err.message || 'Lỗi Server nội bộ';
+  let message = statusCode >= 500 && env.NODE_ENV === 'production'
+    ? 'Lỗi Server nội bộ'
+    : err.message || 'Lỗi Server nội bộ';
 
   // Xử lý lỗi validate của Mongoose
   if (err.name === 'ValidationError') {
@@ -42,6 +44,11 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'JsonWebTokenError') {
     statusCode = 401;
     message = 'Token không hợp lệ, vui lòng đăng nhập lại';
+  }
+
+  if (err.name === 'TokenExpiredError') {
+    statusCode = 401;
+    message = 'Token đã hết hạn, vui lòng đăng nhập lại';
   }
 
   // Log lỗi ra console (production nên tích hợp thêm Winston/Sentry)
