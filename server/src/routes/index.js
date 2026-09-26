@@ -11,14 +11,20 @@ const express = require('express');
 
 const healthcheckRoutes = require('./healthcheck.routes');
 const authRoutes = require('./auth.routes');
-// TODO (Tuần 2+): const productRoutes = require('./product.routes');
-// TODO (Tuần 2+): const orderRoutes = require('./order.routes');
+const orderRoutes = require('./order.routes');
+const couponRoutes = require('./coupon.routes');
+const paymentRoutes = require('./payment.routes');
+const reviewRoutes = require('./review.routes');
+const syncRoutes = require('./sync.routes');
 
 const router = express.Router();
 
 router.use('/healthcheck', healthcheckRoutes);
 router.use('/auth', authRoutes);
-// router.use('/products', productRoutes);
-// router.use('/orders', orderRoutes);
+router.use('/orders', orderRoutes);
+router.use('/coupons', couponRoutes);
+router.use('/payments', paymentRoutes);
+router.use('/reviews', reviewRoutes);
+router.use('/sync', syncRoutes);
 
 module.exports = router;

@@ -12,7 +12,7 @@
  */
 
 const http = require('http');
-const { Server } = require('socket.io');
+const { initializeSocket } = require('./config/socket');
 
 const app = require('./app');
 const env = require('./config/env');
@@ -21,25 +21,10 @@ const connectDB = require('./config/db');
 // Tạo HTTP server từ Express app (bắt buộc để gắn Socket.io vào chung cổng)
 const httpServer = http.createServer(app);
 
-// Khởi tạo Socket.io, gắn CORS tương tự Express để 2 client có thể kết nối realtime
-const io = new Server(httpServer, {
-  cors: {
-    origin: [env.CLIENT_URL, env.ADMIN_URL],
-    credentials: true,
-  },
-});
+// Khởi tạo Socket.io với đầy đủ phân vùng phòng (Rooms)
+const io = initializeSocket(httpServer);
 
-// Lắng nghe sự kiện kết nối Socket.io (VD: thông báo đơn hàng mới cho Admin,
-// cập nhật trạng thái đơn hàng realtime cho khách hàng...)
-io.on('connection', (socket) => {
-  console.log(`🔌 Client mới kết nối Socket.io: ${socket.id}`);
-
-  socket.on('disconnect', () => {
-    console.log(`🔌 Client đã ngắt kết nối: ${socket.id}`);
-  });
-});
-
-// Cho các Controller/Service khác truy cập io qua app (VD: req.app.get('io').emit(...))
+// Cho các Controller/Service khác truy cập io qua app
 app.set('io', io);
 
 const startServer = async () => {

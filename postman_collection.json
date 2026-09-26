@@ -188,6 +188,348 @@
           }
         }
       ]
+    },
+    {
+      "name": "Orders & Checkout (Tuần 4 - Leader)",
+      "item": [
+        {
+          "name": "POST /orders/checkout (COD + Fail-safe Rollback)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Idempotency-Key", "value": "order-req-001" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"64f1a2b3c4d5e6f7a8b9c0d1\",\n      \"sku\": \"TSHIRT-BLK-L\",\n      \"quantity\": 2\n    }\n  ],\n  \"shippingAddress\": {\n    \"fullName\": \"Nguyễn Văn A\",\n    \"phone\": \"0901234567\",\n    \"address\": \"123 Đường Lê Lợi, Phường Bến Nghé\",\n    \"city\": \"Hồ Chí Minh\",\n    \"district\": \"Quận 1\"\n  },\n  \"couponCode\": \"DISCOUNT10\",\n  \"paymentMethod\": \"COD\",\n  \"shippingFee\": 30000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/checkout",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "checkout"]
+            },
+            "description": "Đặt hàng COD, trừ kho nguyên tử, áp mã coupon, sinh mã QR HMAC và bồi hoàn nếu phát sinh lỗi."
+          }
+        },
+        {
+          "name": "GET /orders/my-orders (Lịch sử đơn hàng cá nhân)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders/my-orders?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "my-orders"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /orders/track/:orderCode (Tra cứu công khai kèm mã HMAC)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/orders/track/ORD-20260926-XXXXX?token=your_hmac_sha256_token",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "track", "ORD-20260926-XXXXX"],
+              "query": [
+                { "key": "token", "value": "your_hmac_sha256_token" }
+              ]
+            },
+            "description": "Tra cứu đơn hàng không cần đăng nhập. Nếu kèm HMAC token hợp lệ sẽ hiển thị toàn bộ hóa đơn."
+          }
+        },
+        {
+          "name": "GET /orders (Admin - Danh sách đơn hàng)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/orders?status=pending&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders"],
+              "query": [
+                { "key": "status", "value": "pending" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /orders/:id/status (Admin - Cập nhật trạng thái / Auto-Restock)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"processing\",\n  \"note\": \"Đã xác nhận đơn hàng và đang đóng gói sản phẩm\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/orders/ORDER_ID/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["orders", "ORDER_ID", "status"]
+            },
+            "description": "Chuyển trạng thái đơn hàng. Nếu chuyển sang 'cancelled' hệ thống sẽ tự động hoàn trả tồn kho."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Coupons (Tuần 4)",
+      "item": [
+        {
+          "name": "POST /coupons/apply (Kiểm tra & tính tiền giảm)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"DISCOUNT10\",\n  \"orderTotal\": 500000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/coupons/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["coupons", "apply"]
+            }
+          }
+        },
+        {
+          "name": "POST /coupons (Admin tạo mã mới)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"DISCOUNT10\",\n  \"description\": \"Giảm 10% tối đa 50k cho đơn từ 200k\",\n  \"discountType\": \"percentage\",\n  \"discountValue\": 10,\n  \"maxDiscountAmount\": 50000,\n  \"minOrderValue\": 200000,\n  \"endDate\": \"2026-12-31T23:59:59.000Z\",\n  \"usageLimit\": 500,\n  \"userLimit\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/coupons",
+              "host": ["{{baseUrl}}"],
+              "path": ["coupons"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments VNPay & Audit Logs (Tuần 5 - Leader)",
+      "item": [
+        {
+          "name": "POST /payments/create-vnpay-url (Tạo URL thanh toán VNPay Sandbox)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"ORDER_ID_HERE\",\n  \"bankCode\": \"NCB\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/create-vnpay-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "create-vnpay-url"]
+            },
+            "description": "Tạo URL dẫn sang cổng thanh toán VNPay Sandbox với số tiền chuẩn xác (x100) và chữ ký HMAC-SHA512."
+          }
+        },
+        {
+          "name": "GET /payments/vnpay-return (Client Return URL)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/vnpay-return?vnp_Amount=10000000&vnp_BankCode=NCB&vnp_ResponseCode=00&vnp_TxnRef=ORD-20260926-XXXXX&vnp_SecureHash=VALID_HASH",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "vnpay-return"],
+              "query": [
+                { "key": "vnp_Amount", "value": "10000000" },
+                { "key": "vnp_BankCode", "value": "NCB" },
+                { "key": "vnp_ResponseCode", "value": "00" },
+                { "key": "vnp_TxnRef", "value": "ORD-20260926-XXXXX" },
+                { "key": "vnp_SecureHash", "value": "VALID_HASH" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /payments/vnpay-ipn (Server-to-Server IPN Webhook)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payments/vnpay-ipn?vnp_Amount=10000000&vnp_BankCode=NCB&vnp_ResponseCode=00&vnp_TxnRef=ORD-20260926-XXXXX&vnp_SecureHash=VALID_HASH",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "vnpay-ipn"],
+              "query": [
+                { "key": "vnp_Amount", "value": "10000000" },
+                { "key": "vnp_BankCode", "value": "NCB" },
+                { "key": "vnp_ResponseCode", "value": "00" },
+                { "key": "vnp_TxnRef", "value": "ORD-20260926-XXXXX" },
+                { "key": "vnp_SecureHash", "value": "VALID_HASH" }
+              ]
+            },
+            "description": "Webhook tự động từ VNPay. Trả về RspCode 00 nếu thành công, 97 nếu sai checksum, 02 nếu đơn đã được xác nhận trước đó (Idempotent)."
+          }
+        },
+        {
+          "name": "GET /payments/audit-logs/:orderId (Admin - Lịch sử kiểm toán đơn hàng)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments/audit-logs/ORDER_ID_HERE",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "audit-logs", "ORDER_ID_HERE"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews & Ratings (Tuần 6 - Thành viên B)",
+      "item": [
+        {
+          "name": "POST /reviews (Gửi đánh giá - Verified Purchase)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"PRODUCT_ID_HERE\",\n  \"rating\": 5,\n  \"comment\": \"Sản phẩm chất lượng vượt trội, đóng gói rất kỹ lưỡng!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"]
+            },
+            "description": "Gửi đánh giá sản phẩm. Backend tự động kiểm tra xem user đã mua sản phẩm này chưa (chống đánh giá ảo)."
+          }
+        },
+        {
+          "name": "GET /reviews/product/:productId (Xem đánh giá công khai)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reviews/product/PRODUCT_ID_HERE?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "product", "PRODUCT_ID_HERE"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /reviews (Admin - Quản lý đánh giá)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reviews?status=approved&page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews"],
+              "query": [
+                { "key": "status", "value": "approved" },
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "PATCH /reviews/:id/status (Admin - Duyệt / Ẩn đánh giá)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\",\n  \"adminFeedback\": \"Nội dung vi phạm tiêu chuẩn cộng đồng\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reviews/REVIEW_ID_HERE/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["reviews", "REVIEW_ID_HERE", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Offline Sync Queue (Tuần 6 - Thành viên A & PWA)",
+      "item": [
+        {
+          "name": "POST /sync/offline-orders (Đồng bộ danh sách đơn ngoại tuyến)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orders\": [\n    {\n      \"clientOrderId\": \"pwa-offline-uuid-12345\",\n      \"items\": [\n        {\n          \"productId\": \"PRODUCT_ID_HERE\",\n          \"sku\": \"TSHIRT-BLK-L\",\n          \"quantity\": 1\n        }\n      ],\n      \"shippingAddress\": {\n        \"fullName\": \"Trần Thị PWA\",\n        \"phone\": \"0912345678\",\n        \"address\": \"789 Điện Biên Phủ, Quận Bình Thạnh\",\n        \"city\": \"Hồ Chí Minh\"\n      },\n      \"paymentMethod\": \"COD\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sync/offline-orders",
+              "host": ["{{baseUrl}}"],
+              "path": ["sync", "offline-orders"]
+            },
+            "description": "Đồng bộ đơn hàng được lưu tạm trong IndexedDB khi mất mạng. Khóa chống trùng clientOrderId đảm bảo không tạo đơn thừa."
+          }
+        },
+        {
+          "name": "POST /sync/offline-cart (Hợp nhất giỏ hàng offline)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"PRODUCT_ID_HERE\",\n      \"sku\": \"TSHIRT-BLK-L\",\n      \"name\": \"Áo Thun Basic\",\n      \"price\": 199000,\n      \"quantity\": 2\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/sync/offline-cart",
+              "host": ["{{baseUrl}}"],
+              "path": ["sync", "offline-cart"]
+            }
+          }
+        }
+      ]
     }
   ]
 }

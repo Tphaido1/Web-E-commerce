@@ -5,11 +5,13 @@ import Register from './pages/Register/Register.jsx';
 import Products from './pages/Products/Products.jsx';
 import Cart from './pages/Cart/Cart.jsx';
 import { CartProvider } from './context/CartContext.jsx';
+import OfflineBanner from './components/OfflineBanner/OfflineBanner.jsx';
 import './styles/global.css';
 
 function App() {
   return (
     <CartProvider>
+      <OfflineBanner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/" element={<Home />} />
