@@ -8,6 +8,7 @@ import Orders from './pages/Orders.jsx';
 import Products from './pages/Products.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import ProductEditor from './pages/ProductEditor.jsx';
+import Reviews from './pages/Reviews.jsx';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/products/:id/edit" element={<ProductEditor />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/orders" element={<Orders />} />
+          <Route path="/reviews" element={<Reviews />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

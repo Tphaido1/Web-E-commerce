@@ -5,6 +5,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   ShoppingOutlined,
+  StarOutlined,
 } from '@ant-design/icons';
 import { Avatar, Button, Drawer, Grid, Layout, Menu, Typography } from 'antd';
 import { useMemo, useState } from 'react';
@@ -17,6 +18,7 @@ const menuItems = [
   { key: '/products', icon: <AppstoreOutlined />, label: 'Products' },
   { key: '/categories', icon: <FolderOpenOutlined />, label: 'Categories' },
   { key: '/orders', icon: <ShoppingOutlined />, label: 'Orders' },
+  { key: '/reviews', icon: <StarOutlined />, label: 'Đánh giá (Reviews)' },
 ];
 
 const pageTitles = {
@@ -24,6 +26,7 @@ const pageTitles = {
   '/products': 'Products',
   '/categories': 'Categories',
   '/orders': 'Orders',
+  '/reviews': 'Đánh giá & Phản hồi',
 };
 
 function AdminLayout() {

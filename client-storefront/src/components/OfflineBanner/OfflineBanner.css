@@ -1,0 +1,47 @@
+.offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  text-align: center;
+  transition: all 0.3s ease-in-out;
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+}
+
+.offline-active {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.syncing-active {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+  color: #ffffff;
+}
+
+.sync-success {
+  background: linear-gradient(90deg, #10b981, #059669);
+  color: #ffffff;
+}
+
+.offline-icon {
+  font-size: 16px;
+}
+
+.sync-spinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
