@@ -31,3 +31,7 @@ coverage/
 
 # ===== Misc =====
 *.local
+
+# thinh
+.task_logs/
+GEMINI.md

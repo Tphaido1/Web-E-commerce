@@ -1,8 +1,34 @@
 const crypto = require('crypto');
 const QRCode = require('qrcode');
+const nodemailer = require('nodemailer');
 const env = require('../config/env');
 
 class EmailService {
+  /**
+   * Khởi tạo Transporter cho Nodemailer với cơ chế Fallback an toàn (Safe Fallback / Testing Mode)
+   * @returns {import('nodemailer').Transporter}
+   */
+  static getTransporter() {
+    // Nếu có thông số SMTP trong môi trường thật
+    if (process.env.SMTP_HOST && process.env.SMTP_USER) {
+      return nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+    }
+
+    // Nếu môi trường test hoặc local dev chưa có tài khoản SMTP thật
+    // Dùng JSONTransport / Mock Transport để không chặn luồng chạy và không crash app
+    return nodemailer.createTransport({
+      jsonTransport: true,
+    });
+  }
+
   /**
    * Sinh mã bí mật HMAC SHA-256 chống giả mạo cho tra cứu đơn hàng
    * Token = HMAC_SHA256(orderId + ':' + createdAt, SECRET_KEY)
@@ -61,7 +87,8 @@ class EmailService {
    * @returns {string} HTML string
    */
   static generateInvoiceHtml(order, qrCodeDataUrl) {
-    const itemsRows = order.items
+    const items = order.items || [];
+    const itemsRows = items
       .map(
         (item) => `
         <tr style="border-bottom: 1px solid #e2e8f0;">
@@ -70,12 +97,14 @@ class EmailService {
             <span style="font-size: 12px; color: #64748b;">SKU: ${item.sku}</span>
           </td>
           <td style="padding: 10px 8px; font-size: 14px; text-align: center; color: #334155;">${item.quantity}</td>
-          <td style="padding: 10px 8px; font-size: 14px; text-align: right; color: #334155;">${item.price.toLocaleString('vi-VN')}₫</td>
-          <td style="padding: 10px 8px; font-size: 14px; text-align: right; font-weight: 600; color: #0f172a;">${item.subtotal.toLocaleString('vi-VN')}₫</td>
+          <td style="padding: 10px 8px; font-size: 14px; text-align: right; color: #334155;">${(item.price || 0).toLocaleString('vi-VN')}₫</td>
+          <td style="padding: 10px 8px; font-size: 14px; text-align: right; font-weight: 600; color: #0f172a;">${((item.subtotal || item.price * item.quantity) || 0).toLocaleString('vi-VN')}₫</td>
         </tr>
       `
       )
       .join('');
+
+    const shipping = order.shippingAddress || {};
 
     return `
       <!DOCTYPE html>
@@ -101,7 +130,7 @@ class EmailService {
             <p style="margin: 8px 0 0; opacity: 0.9;">Cảm ơn quý khách đã mua sắm tại cửa hàng chúng tôi!</p>
           </div>
           <div class="content">
-            <p>Xin chào <strong>${order.shippingAddress.fullName}</strong>,</p>
+            <p>Xin chào <strong>${shipping.fullName || 'Quý khách'}</strong>,</p>
             <p>Đơn hàng <strong>#${order.orderCode}</strong> của bạn đã được ghi nhận vào hệ thống.</p>
             
             <table class="summary-table">
@@ -121,33 +150,33 @@ class EmailService {
             <div style="margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 12px;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                 <span>Tạm tính:</span>
-                <strong>${order.totalAmount.toLocaleString('vi-VN')}₫</strong>
+                <strong>${(order.totalAmount || 0).toLocaleString('vi-VN')}₫</strong>
               </div>
               ${
                 order.discountAmount > 0
                   ? `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #16a34a;">
                   <span>Giảm giá (Mã ${order.coupon?.code || ''}):</span>
-                  <strong>-${order.discountAmount.toLocaleString('vi-VN')}₫</strong>
+                  <strong>-${(order.discountAmount || 0).toLocaleString('vi-VN')}₫</strong>
                 </div>
               `
                   : ''
               }
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                 <span>Phí vận chuyển:</span>
-                <strong>${order.shippingFee.toLocaleString('vi-VN')}₫</strong>
+                <strong>${(order.shippingFee || 0).toLocaleString('vi-VN')}₫</strong>
               </div>
               <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 18px; font-weight: 700; color: #2563eb;">
                 <span>Tổng thanh toán:</span>
-                <span>${order.finalAmount.toLocaleString('vi-VN')}₫</span>
+                <span>${(order.finalAmount || 0).toLocaleString('vi-VN')}₫</span>
               </div>
             </div>
 
             <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border-radius: 8px;">
               <h4 style="margin: 0 0 8px; color: #1e293b;">Thông tin nhận hàng:</h4>
-              <p style="margin: 4px 0; color: #475569;"><strong>Người nhận:</strong> ${order.shippingAddress.fullName} (${order.shippingAddress.phone})</p>
-              <p style="margin: 4px 0; color: #475569;"><strong>Địa chỉ:</strong> ${order.shippingAddress.address}, ${order.shippingAddress.ward || ''}, ${order.shippingAddress.district || ''}, ${order.shippingAddress.city || ''}</p>
-              <p style="margin: 4px 0; color: #475569;"><strong>Phương thức:</strong> ${order.paymentMethod} (Thanh toán khi nhận hàng)</p>
+              <p style="margin: 4px 0; color: #475569;"><strong>Người nhận:</strong> ${shipping.fullName || 'N/A'} (${shipping.phone || 'N/A'})</p>
+              <p style="margin: 4px 0; color: #475569;"><strong>Địa chỉ:</strong> ${shipping.address || ''}, ${shipping.ward || ''}, ${shipping.district || ''}, ${shipping.city || ''}</p>
+              <p style="margin: 4px 0; color: #475569;"><strong>Phương thức:</strong> ${order.paymentMethod || 'COD'} (Thanh toán khi nhận hàng)</p>
             </div>
 
             <div class="qr-section">
@@ -167,10 +196,10 @@ class EmailService {
   }
 
   /**
-   * Gửi email xác nhận đơn hàng kèm QR code
+   * Gửi email xác nhận đơn hàng kèm QR code hóa đơn thông qua Nodemailer
    * @param {object} order - Mongoose Order document
    * @param {string} recipientEmail - Email người nhận
-   * @returns {Promise<{ success: boolean, qrCodeDataUrl: string, trackingToken: string }>}
+   * @returns {Promise<{ success: boolean, qrCodeDataUrl: string, trackingToken: string, messageId?: string, htmlContent: string }>}
    */
   static async sendOrderConfirmationEmail(order, recipientEmail) {
     try {
@@ -178,19 +207,29 @@ class EmailService {
       const qrCodeDataUrl = await this.generateQRCodeDataUrl(order.orderCode, trackingToken);
       const htmlContent = this.generateInvoiceHtml(order, qrCodeDataUrl);
 
+      const transporter = this.getTransporter();
+
+      const mailOptions = {
+        from: process.env.EMAIL_FROM || '"E-Commerce Store" <no-reply@ecommerce.com>',
+        to: recipientEmail,
+        subject: `[Xác nhận đơn hàng #${order.orderCode}] Hóa đơn điện tử kèm mã QR tra cứu`,
+        html: htmlContent,
+      };
+
+      const mailResult = await transporter.sendMail(mailOptions);
+
       // eslint-disable-next-line no-console
       console.log(
-        `✉️ [EmailService] Đã khởi tạo email hóa đơn kèm mã QR cho đơn hàng #${order.orderCode} -> gửi tới: ${recipientEmail}`
+        `✉️ [EmailService] Đã gửi email hóa đơn kèm mã QR cho đơn hàng #${order.orderCode} -> gửi tới: ${recipientEmail}`
       );
 
-      // Nếu có SMTP config sau này (ví dụ Tuần 5 hoặc production), ta có thể tích hợp nodemailer tại đây.
-      // Trả về kết quả thành công kèm thông tin QR để lưu vào Order
       return {
         success: true,
         recipientEmail,
         trackingToken,
         qrCodeDataUrl,
         htmlContent,
+        messageId: mailResult?.messageId || 'mock-message-id',
       };
     } catch (error) {
       // eslint-disable-next-line no-console
