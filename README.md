@@ -166,42 +166,36 @@ Authorization: Bearer <access-jwt>
 ```
 
 Response `200`:
+## 📌 Trạng thái Tuần 2-3 (Đã hoàn tất 100%)
 
-```json
-{
-	"status": "success",
-	"message": "Đăng xuất thành công",
-	"data": null
-}
-```
-
-Logout xóa hash refresh token trong database. Access token stateless hiện tại vẫn có hiệu lực cho tới khi hết hạn.
-
-## 🌳 Quy ước Git Branch (đề xuất cho nhóm 5 người)
-
-- `main`: code ổn định, đã review
-- `develop`: nhánh tích hợp chung
-- `feature/<ten-thanh-vien>-<chuc-nang>`: mỗi thành viên làm việc trên nhánh riêng, VD: `feature/an-product-crud`
-
-## 📌 Trạng thái Tuần 2-3 và việc tiếp theo
-
-- Auth Core đã hoàn tất ở backend: `User.model.js`, `auth.controller.js`, `auth.middleware.js` và bốn auth endpoint dùng JWT + bcrypt thật.
-- `client-storefront/src/services/authService.js` đã có thể gọi `/auth/register` và `/auth/login`; không cần sửa client ở bước Auth Core này.
-- Backend hiện chưa có route thật cho `/products`, `/cart`, `/orders`, `/categories`; các request frontend tới các endpoint này vẫn có thể nhận `404`.
-- `client-admin/src/services/productService.js` và `categoryService.js` hiện còn dùng mock data, cần thay bằng API thật khi backend tương ứng hoàn tất.
-- `client-admin/src/services/authService.js` hiện mới dùng localStorage mock; cần chuyển sang `/auth/login` thật và kiểm tra role trước khi merge lên `main`.
-- `client-storefront/src/services/cartService.js` còn placeholder, còn `CartContext.jsx` dùng localStorage; cần refactor khi Cart API backend được triển khai.
-- Bổ sung unit/integration test cho auth, đặc biệt sai mật khẩu, token hết hạn, refresh token và duplicate email.
-
-Các hạng mục backend tiếp theo:
-
-- Thiết kế Schema Mongoose cho `models/` (Product, Order, Category...)
-- Xây dựng Controller + Service cho module Product (CRUD)
-- Thiết kế layout chính (Header, Footer, Sidebar) cho 2 Frontend
+- **Auth Core**: Hoàn tất ở backend (`User.model.js`, `auth.controller.js`, `auth.middleware.js`) với JWT + bcrypt thật.
+- **Product Module (CRUD)**: Đã hoàn tất (`Product.model.js`, `product.controller.js`, `product.routes.js`) hỗ trợ lọc theo danh mục, khoảng giá, sắp xếp, tìm kiếm text index và phân trang.
+- **Category Module**: Đã hoàn tất (`Category.model.js`, `category.controller.js`, `category.routes.js`) hỗ trợ CRUD danh mục độc lập và tự động sinh slug tiếng Việt chuẩn.
+- **Cart Module Online**: Đã hoàn tất (`Cart.model.js`, `cart.controller.js`, `cart.routes.js`) với API lấy giỏ hàng, thêm sản phẩm, cập nhật số lượng có kiểm tra tồn kho, xóa sản phẩm và xóa giỏ.
+- **Database Seeder**: Lệnh `npm run seed` (`server/scripts/seed.js`) khởi tạo tự động toàn bộ Users, Categories, Products, Inventories và Coupons vào MongoDB.
 
 ---
 
-## 🚀 Nhật Ký Cập Nhật Tính Năng (Tuần 4 — Tuần 6)
+## 🚀 Nhật Ký Cập Nhật Tính Năng (Tuần 1 — Tuần 6)
+
+### 🛍️ 0. Tuần 2 — Tuần 3: Danh Mục (Category), Sản Phẩm (Product CRUD) & Giỏ Hàng Trực Tuyến (Cart Engine)
+
+- **Quản Lý Sản Phẩm & Biến Thể**:
+  - `GET /api/v1/products`: Lấy danh sách sản phẩm, phân trang tự động (`page`, `limit`), lọc theo `category`, `minPrice`, `maxPrice`, tìm kiếm `search` và sắp xếp (`price_asc`, `price_desc`, `rating`).
+  - `GET /api/v1/products/:id`: Xem chi tiết sản phẩm theo ID hoặc slug.
+  - `POST`, `PUT`, `DELETE /api/v1/products`: Thêm/sửa/xóa sản phẩm dành cho Admin/Vendor, tự động đồng bộ tồn kho sang `Inventory.model.js`.
+- **Quản Lý Danh Mục Độc Lập (Category Management)**:
+  - Schema `Category.model.js` với hook tự động chuẩn hóa slug tiếng Việt (xử lý ký tự đặc biệt đ/Đ).
+  - API `GET`, `POST`, `PUT`, `DELETE /api/v1/categories` cho phép Admin quản lý danh mục sản phẩm toàn sàn.
+- **Giỏ Hàng Trực Tuyến (Online Cart API)**:
+  - `GET /api/v1/cart`: Lấy giỏ hàng của user với `recalculateTotal` tự động tính tổng tiền.
+  - `POST /api/v1/cart/items`: Thêm sản phẩm vào giỏ, kiểm tra tính khả dụng từ `Inventory`.
+  - `PUT /api/v1/cart/items/:id`: Cập nhật số lượng sản phẩm.
+  - `DELETE /api/v1/cart/items/:id` & `DELETE /api/v1/cart`: Xóa từng món hoặc làm trống giỏ hàng.
+- **Khởi Tạo Dữ Liệu Tự Động (Database Seeding)**:
+  - Chạy `npm run seed` trong thư mục `server/` để tự động dọn sạch và nạp 3 tài khoản mẫu, 5 danh mục, 6 sản phẩm, tồn kho theo SKU và 3 mã giảm giá vào MongoDB.
+
+---
 
 ### 📦 1. Tuần 4: Đặt Hàng (Checkout Saga), Giảm Giá (Coupon) & Hóa Đơn QR HMAC
 
@@ -265,21 +259,23 @@ Các hạng mục backend tiếp theo:
 
 ---
 
-### 🧪 Danh Sách Test Suites Đã Được Xác Minh (Jest 51/51 Tests Passed)
+### 🧪 Danh Sách Test Suites Đã Được Xác Minh (Jest 61/61 Tests Passed)
 
 ```bash
 cd server
 npm test
 ```
 
-1. `tests/email.test.js` (5 tests) — Email invoice & HMAC-SHA256 QR token
-2. `tests/coupon.test.js` (8 tests) — Coupon logic, percentage, fixed, limits, expiry
-3. `tests/order.controller.test.js` (7 tests) — Checkout, stock deduction, rollback, cancellation
-4. `tests/checkout.api.test.js` (4 tests) — Supertest API checkout & validation
-5. `tests/payment.vnpay.test.js` (12 tests) — URL generator, Checksum HMAC-SHA512, Return handler, IPN Webhook
-6. `tests/socket.test.js` (5 tests) — JWT Handshake, room partitioning, notification emitters
-7. `tests/concurrency.test.js` (3 tests) — 50 concurrent requests, anti-price tampering, coupon race
-8. `tests/sync.test.js` (3 tests) — Offline orders sync idempotency, out-of-stock handling, cart sync
-9. `tests/review.test.js` (4 tests) — Verified purchase check (403), rating validation (400), creation (201), admin moderation (200)
+1. `tests/category_cart.test.js` (10 tests) — Category CRUD & Cart operations (get, add, update, remove, clear)
+2. `tests/email.test.js` (5 tests) — Email invoice & HMAC-SHA256 QR token
+3. `tests/coupon.test.js` (8 tests) — Coupon logic, percentage, fixed, limits, expiry
+4. `tests/order.controller.test.js` (7 tests) — Checkout, stock deduction, rollback, cancellation
+5. `tests/checkout.api.test.js` (4 tests) — Supertest API checkout & validation
+6. `tests/payment.vnpay.test.js` (12 tests) — URL generator, Checksum HMAC-SHA512, Return handler, IPN Webhook
+7. `tests/socket.test.js` (5 tests) — JWT Handshake, room partitioning, notification emitters
+8. `tests/concurrency.test.js` (3 tests) — 50 concurrent requests, anti-price tampering, coupon race
+9. `tests/sync.test.js` (3 tests) — Offline orders sync idempotency, out-of-stock handling, cart sync
+10. `tests/review.test.js` (4 tests) — Verified purchase check (403), rating validation (400), creation (201), admin moderation (200)
 
 ---
+
