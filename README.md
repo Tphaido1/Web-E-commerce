@@ -307,4 +307,79 @@ npm test
 12. `tests/cart_inventory.test.js` (11 tests) — Cart merge, inventory checks & utils
 13. `tests/upload.test.js` (11 tests) — Cloudinary upload service & file validations
 
+---
+
+## 🌐 Hướng Dẫn & Lưu Ý Triển Khai 100% Vercel (Tuần 8 — Đọc Kỹ Trước Khi Deploy)
+
+Hệ thống được thiết kế theo mô hình Monorepo gồm 3 ứng dụng độc lập. Toàn bộ hệ thống được tối ưu hóa để triển khai **100% trên Vercel** thông qua việc tạo **3 Projects riêng biệt** từ cùng 1 repository GitHub:
+
+```
+                  GitHub Repository (Web-E-commerce)
+                   ┌──────────────┼──────────────┐
+                   │              │              │
+             (Root: server)  (Root: client-   (Root: client-
+                   │          storefront)        admin)
+                   ▼              ▼              ▼
+            Vercel Project  Vercel Project  Vercel Project
+               [Backend]     [Storefront]      [Admin]
+```
+
+### 📋 1. Bảng Thiết Lập 3 Projects Trên Vercel Dashboard
+
+Khi kết nối repository GitHub vào [Vercel Dashboard](https://vercel.com), hãy nhấn **"Add New Project"** 3 lần tương ứng với 3 thư mục:
+
+| Dự án Vercel | Root Directory | Framework Preset | Build Command | Output Directory | File cấu hình |
+|---|---|---|---|---|---|
+| **1. Client Storefront** | `client-storefront` | `Vite` | `npm run build` | `dist` | `client-storefront/vercel.json` |
+| **2. Client Admin** | `client-admin` | `Vite` | `npm run build` | `dist` | `client-admin/vercel.json` |
+| **3. Server Backend** | `server` | `Other` | *(Để trống)* | *(Để trống)* | `server/vercel.json` & `server/api/index.js` |
+
+> [!NOTE]
+> Hai file `client-storefront/vercel.json` và `client-admin/vercel.json` đã được cài đặt sẵn quy tắc rewrite SPA:
+> `{"rewrites": [{"source": "/(.*)", "destination": "/index.html"}]}` giúp người dùng khi F5 hoặc truy cập đường dẫn con không bị lỗi HTTP 404.
+
+---
+
+### 🔑 2. Cấu Hình Biến Môi Trường (Environment Variables) Trên Vercel
+
+Cấu hình trong mục **Settings → Environment Variables** của từng project trên Vercel:
+
+#### A. Project `client-storefront`:
+* `VITE_API_BASE_URL`: Điền URL domain Vercel của Backend (Ví dụ: `https://ecommerce-server-xxx.vercel.app/api/v1`)
+
+#### B. Project `client-admin`:
+* `VITE_API_BASE_URL`: Điền URL domain Vercel của Backend (Ví dụ: `https://ecommerce-server-xxx.vercel.app/api/v1`)
+
+#### C. Project `server`:
+* `NODE_ENV`: `production`
+* `MONGO_URI`: `mongodb+srv://<username>:<password>@<cluster>.mongodb.net/ecommerce_prod?retryWrites=true&w=majority`
+* `JWT_SECRET`: Khóa bí mật ký Access Token (chuỗi ngẫu nhiên dài và bảo mật)
+* `JWT_REFRESH_SECRET`: Khóa bí mật ký Refresh Token
+* `CLIENT_URL`: URL Vercel của Storefront (để cấp phép CORS cho khách hàng)
+* `ADMIN_URL`: URL Vercel của Admin Dashboard (để cấp phép CORS cho quản trị viên)
+* `HMAC_SECRET`: Khóa bí mật sinh mã QR tra cứu đơn hàng
+* *(Tùy chọn)*: `CLOUDINARY_*`, `SMTP_*`, `VNP_*` theo mẫu tại [`server/.env.example`](./server/.env.example).
+
+---
+
+### ⚠️ 3. LƯU Ý QUAN TRỌNG DÀNH CHO CÁC THÀNH VIÊN TRONG NHÓM
+
+1. **Về Tài Khoản MongoDB Atlas**:
+   * **Tạm thời KHÔNG đụng vào tài khoản MongoDB Atlas thật** và **KHÔNG commit thông tin đăng nhập/mật khẩu lên Git**.
+   * Việc kết nối MongoDB Atlas chỉ thực hiện bằng cách dán biến `MONGO_URI` trực tiếp vào bảng Environment Variables trên Vercel ở bước deploy cuối cùng.
+2. **Về Quy Trình Git Flow (Thống nhất của nhóm)**:
+   * **Bước 1**: Mỗi thành viên tiếp tục làm việc và hoàn tất đầu việc trên nhánh riêng của mình (`kphat`, `thinh`, `NBinh`, `DQVinh`, `tphat`).
+   * **Bước 2**: Khi các thành viên hoàn thành đến Tuần 8, mở Pull Request **merge toàn bộ vào nhánh `develop`**.
+   * **Bước 3**: Chạy lệnh kiểm thử toàn diện trên nhánh `develop`:
+     ```bash
+     cd server
+     npm test
+     ```
+     Đảm bảo đạt **13/13 Test Suites PASS (98/98 Tests)** và không có conflict mã nguồn.
+   * **Bước 4**: Mở Pull Request từ `develop` sang `main` để kích hoạt Vercel tự động deploy bản chính thức.
+3. **Về Cơ Chế Tái Sử Dụng Kết Nối MongoDB Serverless**:
+   * File `server/src/config/db.js` và `server/api/index.js` đã được cấu hình cơ chế connection caching (`readyState >= 1`). Serverless worker sẽ tái sử dụng kết nối database giữa các request thay vì mở kết nối mới liên tục, tránh gây nghẽn connection pool trên MongoDB Atlas.
+4. **Về Tính Năng Socket.io Real-time Trên Vercel**:
+   * Vì Vercel vận hành theo kiến trúc Serverless (hàm chạy khi có request và tắt ngay sau đó), kết nối WebSocket liên tục của Socket.io sẽ hoạt động ở cơ chế fallback polling hoặc bị ngắt khi function đóng. Toàn bộ các luồng nghiệp vụ REST API (Auth, Sản phẩm, Giỏ hàng, Đặt hàng, Thanh toán VNPay, Đánh giá, Bảo mật) hoạt động ổn định 100%.
+
 

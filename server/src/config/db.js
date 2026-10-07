@@ -11,6 +11,11 @@ const mongoose = require('mongoose');
 const env = require('./env');
 
 const connectDB = async () => {
+  // Tái sử dụng kết nối hiện có nếu đã kết nối (tối ưu cho Vercel Serverless & container)
+  if (mongoose.connection.readyState >= 1) {
+    return mongoose.connection;
+  }
+
   try {
     const conn = await mongoose.connect(env.MONGO_URI);
 
@@ -24,10 +29,15 @@ const connectDB = async () => {
     mongoose.connection.on('error', (err) => {
       console.error(`❌ Lỗi kết nối MongoDB: ${err.message}`);
     });
+
+    return conn;
   } catch (error) {
     console.error(`❌ Không thể kết nối MongoDB: ${error.message}`);
-    // Thoát ứng dụng với mã lỗi 1 (thất bại) vì server không thể chạy thiếu DB
-    process.exit(1);
+    // Trên Vercel Serverless không dùng process.exit để tránh sập worker lambda
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+    throw error;
   }
 };
 
