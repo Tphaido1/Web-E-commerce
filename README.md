@@ -259,23 +259,127 @@ Response `200`:
 
 ---
 
-### 🧪 Danh Sách Test Suites Đã Được Xác Minh (Jest 61/61 Tests Passed)
+### 🛡️ 4. Tuần 7: Tăng Cường Bảo Mật, Kiểm Toán Security Audit & Giới Hạn Tần Suất (Rate Limiting)
+
+- **Bộ Lọc Giới Hạn Tần Suất (Rate Limiting Engine — `rateLimiter.js`)**:
+  - `apiRateLimiter`: Giới hạn toàn sàn cho API endpoints (mặc định 300 request / 15 phút), chống DDoS và thu thập dữ liệu (scraping).
+  - `authRateLimiter`: Giới hạn nghiêm ngặt cho luồng xác thực `/auth/login` và `/auth/register` (tối đa 10 lần thử / 15 phút), ngăn chặn tấn công dò quét mật khẩu (Brute-force).
+  - `checkoutRateLimiter`: Giới hạn cho API đặt hàng `/orders/checkout` (tối đa 20 đơn / 10 phút), ngăn chặn bot spam đơn ảo.
+  - Chuẩn HTTP Headers: Gửi đầy đủ `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` và `Retry-After` khi bị chặn mã HTTP `429 Too Many Requests`.
+- **Phòng Thủ Chống NoSQL Injection (`security.middleware.js`)**:
+  - Quét đệ quy toàn bộ `req.body`, `req.query`, `req.params`.
+  - Triệt tiêu các toán tử MongoDB độc hại (`$gt`, `$ne`, `$where`, `$regex`...) và các key chứa ký tự phân cấp `.` (dot-notation traversal).
+  - Hỗ trợ chế độ phát hiện và chặn đứng trực tiếp bằng HTTP 400 Bad Request.
+- **Làm Sạch Dữ Liệu Chống Tấn Công XSS (Cross-Site Scripting)**:
+  - Tự động làm sạch các chuỗi chứa mã độc: loại bỏ thẻ `<script>`, URI `javascript:`, inline event handlers (`onerror=`, `onload=`, `onclick=`) và thẻ `<iframe>`.
+  - Bảo toàn hoàn hảo chuỗi tiếng Việt có dấu và các ký tự hợp lệ.
+- **Nâng Cấp HTTP Security Headers (Helmet Policy)**:
+  - Cấu hình Content-Security-Policy (CSP) với directive `frame-ancestors 'none'`.
+  - Kích hoạt `X-Frame-Options: DENY` triệt tiêu nguy cơ Clickjacking.
+  - Kích hoạt `X-Content-Type-Options: nosniff` chống MIME-type sniffing.
+  - Ẩn hoàn toàn header `X-Powered-By`.
+- **Bảo Vệ Chống HTTP Parameter Pollution (HPP)**:
+  - Chuẩn hóa query string chống gửi mảng trùng lặp gây ô nhiễm tham số xử lý ở backend.
+- **API Kiểm Toán Trạng Thái Bảo Mật (Security Audit)**:
+  - `GET /api/v1/security/audit`: Endpoint công khai báo cáo chi tiết các lớp phòng thủ đang hoạt động trong hệ thống.
+  - `POST /api/v1/security/echo`: Endpoint kiểm tra dữ liệu sau khi đi qua các bộ lọc Sanitizer.
+
+---
+
+### 🧪 Danh Sách Test Suites Đã Được Xác Minh (Jest 13/13 Suites, 98/98 Tests Passed)
 
 ```bash
 cd server
 npm test
 ```
 
-1. `tests/category_cart.test.js` (10 tests) — Category CRUD & Cart operations (get, add, update, remove, clear)
-2. `tests/email.test.js` (5 tests) — Email invoice & HMAC-SHA256 QR token
-3. `tests/coupon.test.js` (8 tests) — Coupon logic, percentage, fixed, limits, expiry
-4. `tests/order.controller.test.js` (7 tests) — Checkout, stock deduction, rollback, cancellation
-5. `tests/checkout.api.test.js` (4 tests) — Supertest API checkout & validation
-6. `tests/payment.vnpay.test.js` (12 tests) — URL generator, Checksum HMAC-SHA512, Return handler, IPN Webhook
-7. `tests/socket.test.js` (5 tests) — JWT Handshake, room partitioning, notification emitters
-8. `tests/concurrency.test.js` (3 tests) — 50 concurrent requests, anti-price tampering, coupon race
-9. `tests/sync.test.js` (3 tests) — Offline orders sync idempotency, out-of-stock handling, cart sync
-10. `tests/review.test.js` (4 tests) — Verified purchase check (403), rating validation (400), creation (201), admin moderation (200)
+1. `tests/security.test.js` (15 tests) — Helmet headers, Rate limiting (RFC headers & 429), NoSQL injection defense, XSS cleaning, Security audit
+2. `tests/category_cart.test.js` (10 tests) — Category CRUD & Cart operations (get, add, update, remove, clear)
+3. `tests/email.test.js` (5 tests) — Email invoice & HMAC-SHA256 QR token
+4. `tests/coupon.test.js` (8 tests) — Coupon logic, percentage, fixed, limits, expiry
+5. `tests/order.controller.test.js` (7 tests) — Checkout, stock deduction, rollback, cancellation
+6. `tests/checkout.api.test.js` (4 tests) — Supertest API checkout & validation
+7. `tests/payment.vnpay.test.js` (12 tests) — URL generator, Checksum HMAC-SHA512, Return handler, IPN Webhook
+8. `tests/socket.test.js` (5 tests) — JWT Handshake, room partitioning, notification emitters
+9. `tests/concurrency.test.js` (3 tests) — 50 concurrent requests, anti-price tampering, coupon race
+10. `tests/sync.test.js` (3 tests) — Offline orders sync idempotency, out-of-stock handling, cart sync
+11. `tests/review.test.js` (4 tests) — Verified purchase check (403), rating validation (400), creation (201), admin moderation (200)
+12. `tests/cart_inventory.test.js` (11 tests) — Cart merge, inventory checks & utils
+13. `tests/upload.test.js` (11 tests) — Cloudinary upload service & file validations
 
 ---
+
+## 🌐 Hướng Dẫn & Lưu Ý Triển Khai 100% Vercel (Tuần 8 — Đọc Kỹ Trước Khi Deploy)
+
+Hệ thống được thiết kế theo mô hình Monorepo gồm 3 ứng dụng độc lập. Toàn bộ hệ thống được tối ưu hóa để triển khai **100% trên Vercel** thông qua việc tạo **3 Projects riêng biệt** từ cùng 1 repository GitHub:
+
+```
+                  GitHub Repository (Web-E-commerce)
+                   ┌──────────────┼──────────────┐
+                   │              │              │
+             (Root: server)  (Root: client-   (Root: client-
+                   │          storefront)        admin)
+                   ▼              ▼              ▼
+            Vercel Project  Vercel Project  Vercel Project
+               [Backend]     [Storefront]      [Admin]
+```
+
+### 📋 1. Bảng Thiết Lập 3 Projects Trên Vercel Dashboard
+
+Khi kết nối repository GitHub vào [Vercel Dashboard](https://vercel.com), hãy nhấn **"Add New Project"** 3 lần tương ứng với 3 thư mục:
+
+| Dự án Vercel | Root Directory | Framework Preset | Build Command | Output Directory | File cấu hình |
+|---|---|---|---|---|---|
+| **1. Client Storefront** | `client-storefront` | `Vite` | `npm run build` | `dist` | `client-storefront/vercel.json` |
+| **2. Client Admin** | `client-admin` | `Vite` | `npm run build` | `dist` | `client-admin/vercel.json` |
+| **3. Server Backend** | `server` | `Other` | *(Để trống)* | *(Để trống)* | `server/vercel.json` & `server/api/index.js` |
+
+> [!NOTE]
+> Hai file `client-storefront/vercel.json` và `client-admin/vercel.json` đã được cài đặt sẵn quy tắc rewrite SPA:
+> `{"rewrites": [{"source": "/(.*)", "destination": "/index.html"}]}` giúp người dùng khi F5 hoặc truy cập đường dẫn con không bị lỗi HTTP 404.
+
+---
+
+### 🔑 2. Cấu Hình Biến Môi Trường (Environment Variables) Trên Vercel
+
+Cấu hình trong mục **Settings → Environment Variables** của từng project trên Vercel:
+
+#### A. Project `client-storefront`:
+* `VITE_API_BASE_URL`: Điền URL domain Vercel của Backend (Ví dụ: `https://ecommerce-server-xxx.vercel.app/api/v1`)
+
+#### B. Project `client-admin`:
+* `VITE_API_BASE_URL`: Điền URL domain Vercel của Backend (Ví dụ: `https://ecommerce-server-xxx.vercel.app/api/v1`)
+
+#### C. Project `server`:
+* `NODE_ENV`: `production`
+* `MONGO_URI`: `mongodb+srv://<username>:<password>@<cluster>.mongodb.net/ecommerce_prod?retryWrites=true&w=majority`
+* `JWT_SECRET`: Khóa bí mật ký Access Token (chuỗi ngẫu nhiên dài và bảo mật)
+* `JWT_REFRESH_SECRET`: Khóa bí mật ký Refresh Token
+* `CLIENT_URL`: URL Vercel của Storefront (để cấp phép CORS cho khách hàng)
+* `ADMIN_URL`: URL Vercel của Admin Dashboard (để cấp phép CORS cho quản trị viên)
+* `HMAC_SECRET`: Khóa bí mật sinh mã QR tra cứu đơn hàng
+* *(Tùy chọn)*: `CLOUDINARY_*`, `SMTP_*`, `VNP_*` theo mẫu tại [`server/.env.example`](./server/.env.example).
+
+---
+
+### ⚠️ 3. LƯU Ý QUAN TRỌNG DÀNH CHO CÁC THÀNH VIÊN TRONG NHÓM
+
+1. **Về Tài Khoản MongoDB Atlas**:
+   * **Tạm thời KHÔNG đụng vào tài khoản MongoDB Atlas thật** và **KHÔNG commit thông tin đăng nhập/mật khẩu lên Git**.
+   * Việc kết nối MongoDB Atlas chỉ thực hiện bằng cách dán biến `MONGO_URI` trực tiếp vào bảng Environment Variables trên Vercel ở bước deploy cuối cùng.
+2. **Về Quy Trình Git Flow (Thống nhất của nhóm)**:
+   * **Bước 1**: Mỗi thành viên tiếp tục làm việc và hoàn tất đầu việc trên nhánh riêng của mình (`kphat`, `thinh`, `NBinh`, `DQVinh`, `tphat`).
+   * **Bước 2**: Khi các thành viên hoàn thành đến Tuần 8, mở Pull Request **merge toàn bộ vào nhánh `develop`**.
+   * **Bước 3**: Chạy lệnh kiểm thử toàn diện trên nhánh `develop`:
+     ```bash
+     cd server
+     npm test
+     ```
+     Đảm bảo đạt **13/13 Test Suites PASS (98/98 Tests)** và không có conflict mã nguồn.
+   * **Bước 4**: Mở Pull Request từ `develop` sang `main` để kích hoạt Vercel tự động deploy bản chính thức.
+3. **Về Cơ Chế Tái Sử Dụng Kết Nối MongoDB Serverless**:
+   * File `server/src/config/db.js` và `server/api/index.js` đã được cấu hình cơ chế connection caching (`readyState >= 1`). Serverless worker sẽ tái sử dụng kết nối database giữa các request thay vì mở kết nối mới liên tục, tránh gây nghẽn connection pool trên MongoDB Atlas.
+4. **Về Tính Năng Socket.io Real-time Trên Vercel**:
+   * Vì Vercel vận hành theo kiến trúc Serverless (hàm chạy khi có request và tắt ngay sau đó), kết nối WebSocket liên tục của Socket.io sẽ hoạt động ở cơ chế fallback polling hoặc bị ngắt khi function đóng. Toàn bộ các luồng nghiệp vụ REST API (Auth, Sản phẩm, Giỏ hàng, Đặt hàng, Thanh toán VNPay, Đánh giá, Bảo mật) hoạt động ổn định 100%.
+
 
