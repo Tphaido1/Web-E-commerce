@@ -259,23 +259,52 @@ Response `200`:
 
 ---
 
-### 🧪 Danh Sách Test Suites Đã Được Xác Minh (Jest 61/61 Tests Passed)
+### 🛡️ 4. Tuần 7: Tăng Cường Bảo Mật, Kiểm Toán Security Audit & Giới Hạn Tần Suất (Rate Limiting)
+
+- **Bộ Lọc Giới Hạn Tần Suất (Rate Limiting Engine — `rateLimiter.js`)**:
+  - `apiRateLimiter`: Giới hạn toàn sàn cho API endpoints (mặc định 300 request / 15 phút), chống DDoS và thu thập dữ liệu (scraping).
+  - `authRateLimiter`: Giới hạn nghiêm ngặt cho luồng xác thực `/auth/login` và `/auth/register` (tối đa 10 lần thử / 15 phút), ngăn chặn tấn công dò quét mật khẩu (Brute-force).
+  - `checkoutRateLimiter`: Giới hạn cho API đặt hàng `/orders/checkout` (tối đa 20 đơn / 10 phút), ngăn chặn bot spam đơn ảo.
+  - Chuẩn HTTP Headers: Gửi đầy đủ `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` và `Retry-After` khi bị chặn mã HTTP `429 Too Many Requests`.
+- **Phòng Thủ Chống NoSQL Injection (`security.middleware.js`)**:
+  - Quét đệ quy toàn bộ `req.body`, `req.query`, `req.params`.
+  - Triệt tiêu các toán tử MongoDB độc hại (`$gt`, `$ne`, `$where`, `$regex`...) và các key chứa ký tự phân cấp `.` (dot-notation traversal).
+  - Hỗ trợ chế độ phát hiện và chặn đứng trực tiếp bằng HTTP 400 Bad Request.
+- **Làm Sạch Dữ Liệu Chống Tấn Công XSS (Cross-Site Scripting)**:
+  - Tự động làm sạch các chuỗi chứa mã độc: loại bỏ thẻ `<script>`, URI `javascript:`, inline event handlers (`onerror=`, `onload=`, `onclick=`) và thẻ `<iframe>`.
+  - Bảo toàn hoàn hảo chuỗi tiếng Việt có dấu và các ký tự hợp lệ.
+- **Nâng Cấp HTTP Security Headers (Helmet Policy)**:
+  - Cấu hình Content-Security-Policy (CSP) với directive `frame-ancestors 'none'`.
+  - Kích hoạt `X-Frame-Options: DENY` triệt tiêu nguy cơ Clickjacking.
+  - Kích hoạt `X-Content-Type-Options: nosniff` chống MIME-type sniffing.
+  - Ẩn hoàn toàn header `X-Powered-By`.
+- **Bảo Vệ Chống HTTP Parameter Pollution (HPP)**:
+  - Chuẩn hóa query string chống gửi mảng trùng lặp gây ô nhiễm tham số xử lý ở backend.
+- **API Kiểm Toán Trạng Thái Bảo Mật (Security Audit)**:
+  - `GET /api/v1/security/audit`: Endpoint công khai báo cáo chi tiết các lớp phòng thủ đang hoạt động trong hệ thống.
+  - `POST /api/v1/security/echo`: Endpoint kiểm tra dữ liệu sau khi đi qua các bộ lọc Sanitizer.
+
+---
+
+### 🧪 Danh Sách Test Suites Đã Được Xác Minh (Jest 13/13 Suites, 98/98 Tests Passed)
 
 ```bash
 cd server
 npm test
 ```
 
-1. `tests/category_cart.test.js` (10 tests) — Category CRUD & Cart operations (get, add, update, remove, clear)
-2. `tests/email.test.js` (5 tests) — Email invoice & HMAC-SHA256 QR token
-3. `tests/coupon.test.js` (8 tests) — Coupon logic, percentage, fixed, limits, expiry
-4. `tests/order.controller.test.js` (7 tests) — Checkout, stock deduction, rollback, cancellation
-5. `tests/checkout.api.test.js` (4 tests) — Supertest API checkout & validation
-6. `tests/payment.vnpay.test.js` (12 tests) — URL generator, Checksum HMAC-SHA512, Return handler, IPN Webhook
-7. `tests/socket.test.js` (5 tests) — JWT Handshake, room partitioning, notification emitters
-8. `tests/concurrency.test.js` (3 tests) — 50 concurrent requests, anti-price tampering, coupon race
-9. `tests/sync.test.js` (3 tests) — Offline orders sync idempotency, out-of-stock handling, cart sync
-10. `tests/review.test.js` (4 tests) — Verified purchase check (403), rating validation (400), creation (201), admin moderation (200)
+1. `tests/security.test.js` (15 tests) — Helmet headers, Rate limiting (RFC headers & 429), NoSQL injection defense, XSS cleaning, Security audit
+2. `tests/category_cart.test.js` (10 tests) — Category CRUD & Cart operations (get, add, update, remove, clear)
+3. `tests/email.test.js` (5 tests) — Email invoice & HMAC-SHA256 QR token
+4. `tests/coupon.test.js` (8 tests) — Coupon logic, percentage, fixed, limits, expiry
+5. `tests/order.controller.test.js` (7 tests) — Checkout, stock deduction, rollback, cancellation
+6. `tests/checkout.api.test.js` (4 tests) — Supertest API checkout & validation
+7. `tests/payment.vnpay.test.js` (12 tests) — URL generator, Checksum HMAC-SHA512, Return handler, IPN Webhook
+8. `tests/socket.test.js` (5 tests) — JWT Handshake, room partitioning, notification emitters
+9. `tests/concurrency.test.js` (3 tests) — 50 concurrent requests, anti-price tampering, coupon race
+10. `tests/sync.test.js` (3 tests) — Offline orders sync idempotency, out-of-stock handling, cart sync
+11. `tests/review.test.js` (4 tests) — Verified purchase check (403), rating validation (400), creation (201), admin moderation (200)
+12. `tests/cart_inventory.test.js` (11 tests) — Cart merge, inventory checks & utils
+13. `tests/upload.test.js` (11 tests) — Cloudinary upload service & file validations
 
----
 

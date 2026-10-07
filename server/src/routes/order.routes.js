@@ -8,6 +8,7 @@ const {
   updateOrderStatus,
 } = require('../controllers/order.controller');
 const { protect, checkRole } = require('../middlewares/auth.middleware');
+const { checkoutRateLimiter } = require('../middlewares/rateLimiter');
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.get('/track/:orderCode', trackOrderByCode);
 // 2. Các routes yêu cầu đăng nhập người dùng (Customer)
 router.use(protect);
 
-router.post('/checkout', checkout);
+router.post('/checkout', checkoutRateLimiter, checkout);
 router.get('/my-orders', getMyOrders);
 router.get('/:id', getOrderById);
 

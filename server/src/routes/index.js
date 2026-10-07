@@ -19,6 +19,7 @@ const couponRoutes = require('./coupon.routes');
 const paymentRoutes = require('./payment.routes');
 const reviewRoutes = require('./review.routes');
 const syncRoutes = require('./sync.routes');
+const securityRoutes = require('./security.routes');
 
 const router = express.Router();
 
@@ -32,5 +33,6 @@ router.use('/coupons', couponRoutes);
 router.use('/payments', paymentRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/sync', syncRoutes);
+router.use('/security', securityRoutes);
 
 module.exports = router;
