@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Order = require('../models/Order.model');
 const Product = require('../models/Product.model');
 const Inventory = require('../models/Inventory.model');
@@ -6,6 +7,9 @@ const Coupon = require('../models/Coupon.model');
 const EmailService = require('../services/email.service');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
+const { resolveCartItem, resolveItemPrice, badRequest, parseQuantity } = require('../utils/cartItem.util');
+const { claimCoupon, rollbackCouponClaim } = require('../utils/couponClaim.util');
+const { notifyOrderVendors } = require('../utils/vendorScope.util');
 
 /**
  * ĐỒNG BỘ ĐƠN HÀNG NGOẠI TUYẾN TỪ THIẾT BỊ CLIENT (INDEXEDDB / DEXIE.JS)
@@ -45,6 +49,10 @@ const syncOfflineOrders = catchAsync(async (req, res) => {
     // 1. Kiểm tra Idempotent (Chống đồng bộ trùng lặp)
     const existingOrder = await Order.findOne({ idempotencyKey: clientOrderId });
     if (existingOrder) {
+      if (String(existingOrder.user) !== String(userId)) {
+        failedOrders.push({ clientOrderId, reason: 'Idempotency key đã được sử dụng' });
+        continue;
+      }
       syncedOrders.push({
         clientOrderId,
         orderCode: existingOrder.orderCode,
@@ -77,27 +85,31 @@ const syncOfflineOrders = catchAsync(async (req, res) => {
         break;
       }
 
-      let finalPrice = product.price;
-      let finalSku = item.sku;
-      let itemName = product.name;
-
-      if (item.variantId || item.sku) {
-        const variant = product.variants?.find(
-          (v) => (item.variantId && v._id.toString() === item.variantId.toString()) || (item.sku && v.sku === item.sku)
-        );
-        if (variant) {
-          finalPrice = variant.price;
-          finalSku = variant.sku;
-          itemName = `${product.name} (${variant.color || ''} ${variant.size || ''})`.trim();
-        }
+      let qty;
+      let finalSku;
+      let variant;
+      try {
+        qty = parseQuantity(item.quantity);
+        if (typeof item.sku !== 'string' || !item.sku.trim()) throw badRequest('SKU sản phẩm không hợp lệ');
+        finalSku = item.sku.toUpperCase().trim();
+        variant = product.variants?.find((entry) => entry.sku.toUpperCase().trim() === finalSku);
+        if (item.variantId && String(item.variantId) !== String(variant?._id)) throw badRequest('Biến thể không khớp SKU của sản phẩm');
+        const inventory = await Inventory.findOne({ sku: finalSku });
+        if (!inventory || String(inventory.product) !== String(product._id)) throw badRequest('SKU không thuộc sản phẩm hoặc không có trong tồn kho');
+      } catch (error) {
+        hasItemError = true;
+        itemErrorMessage = error.message;
+        break;
       }
-
-      const qty = Number(item.quantity) || 1;
+      const finalPrice = resolveItemPrice(product, variant);
+      const itemName = product.name;
       const subtotal = finalPrice * qty;
       totalAmount += subtotal;
 
       resolvedItems.push({
         product: product._id,
+        vendor: product.vendor || null,
+        stockSource: 'inventory',
         sku: finalSku.toUpperCase().trim(),
         name: itemName,
         price: finalPrice,
@@ -106,6 +118,7 @@ const syncOfflineOrders = catchAsync(async (req, res) => {
       });
     }
 
+    if (!resolvedItems.length && !hasItemError) { hasItemError = true; itemErrorMessage = 'Đơn hàng phải chứa ít nhất một sản phẩm'; }
     if (hasItemError) {
       failedOrders.push({ clientOrderId, reason: itemErrorMessage });
       continue;
@@ -116,9 +129,12 @@ const syncOfflineOrders = catchAsync(async (req, res) => {
     let discountAmount = 0;
     if (couponCode) {
       couponDoc = await Coupon.findOne({ code: couponCode.toUpperCase().trim() });
-      if (couponDoc && couponDoc.validateForOrder(userId, totalAmount).isValid) {
-        discountAmount = couponDoc.calculateDiscount(totalAmount);
+      const validation = couponDoc?.validateForOrder(userId, totalAmount);
+      if (!validation?.isValid) {
+        failedOrders.push({ clientOrderId, reason: validation?.message || 'Mã giảm giá không hợp lệ' });
+        continue;
       }
+      discountAmount = couponDoc.calculateDiscount(totalAmount);
     }
 
     const finalAmount = Math.max(0, totalAmount - discountAmount + Number(shippingFee));
@@ -148,12 +164,21 @@ const syncOfflineOrders = catchAsync(async (req, res) => {
     }
 
     // 5. Tạo đơn hàng chính thức
+    const couponUsageId = new mongoose.Types.ObjectId();
+    const reservedOrderId = new mongoose.Types.ObjectId();
+    let couponClaimed = false;
     try {
+      if (couponDoc) {
+        const claimed = await claimCoupon(couponDoc, userId, couponUsageId, reservedOrderId);
+        if (!claimed) throw badRequest('Mã giảm giá đã hết lượt sử dụng cho tài khoản này');
+        couponClaimed = true;
+      }
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
       const orderCode = `ORD-${dateStr}-${randomSuffix}`;
 
       const newOrder = await Order.create({
+        _id: reservedOrderId,
         orderCode,
         user: userId,
         items: resolvedItems,
@@ -163,6 +188,7 @@ const syncOfflineOrders = catchAsync(async (req, res) => {
         status: 'pending',
         totalAmount,
         discountAmount,
+        coupon: couponDoc ? { couponId: couponDoc._id, code: couponDoc.code, discountAmount } : null,
         shippingFee: Number(shippingFee),
         finalAmount,
         idempotencyKey: clientOrderId,
@@ -176,17 +202,6 @@ const syncOfflineOrders = catchAsync(async (req, res) => {
         ],
       });
 
-      // Tăng lượt dùng coupon
-      if (couponDoc) {
-        await Coupon.updateOne(
-          { _id: couponDoc._id },
-          {
-            $inc: { usageCount: 1 },
-            $push: { usedBy: { user: userId, orderId: newOrder._id } },
-          }
-        );
-      }
-
       // Kích hoạt email & QR bất đồng bộ
       EmailService.sendOrderConfirmationEmail(newOrder, req.user.email).catch(() => {});
 
@@ -197,10 +212,23 @@ const syncOfflineOrders = catchAsync(async (req, res) => {
         finalAmount: newOrder.finalAmount,
         status: newOrder.status,
       });
+      // Notification delivery is best-effort after the committed order. Its
+      // failure must never enter the stock/coupon compensation branch.
+      try {
+        const io = req.app.get('io');
+        if (io) {
+          io.to('role_admin').emit('new_order', { orderId: newOrder._id, orderCode: newOrder.orderCode,
+            finalAmount: newOrder.finalAmount, customerName: shippingAddress.fullName, createdAt: newOrder.createdAt });
+          notifyOrderVendors(io, newOrder, 'new_order');
+        }
+      } catch (notificationError) {
+        console.warn('[Offline Notification Warning]', notificationError.message);
+      }
     } catch (createErr) {
       for (const deducted of successfullyDeducted) {
         await Inventory.compensateStock(deducted.sku, deducted.quantity);
       }
+      if (couponClaimed) await rollbackCouponClaim(couponDoc._id, couponUsageId);
       failedOrders.push({ clientOrderId, reason: createErr.message });
     }
   }
@@ -231,24 +259,16 @@ const syncOfflineCart = catchAsync(async (req, res) => {
     cart = new Cart({ user: userId, items: [] });
   }
 
-  // Hợp nhất (Merge) giỏ hàng: nếu sản phẩm đã có trong giỏ thì tăng số lượng, nếu chưa thì thêm mới
+  // Validate every input before persisting any cart changes.
   for (const offlineItem of items) {
-    const existingIndex = cart.items.findIndex(
-      (ci) => ci.sku.toUpperCase() === offlineItem.sku.toUpperCase()
-    );
-
-    if (existingIndex > -1) {
-      cart.items[existingIndex].quantity += Number(offlineItem.quantity) || 1;
+    const { item, inventory } = await resolveCartItem(offlineItem);
+    const existing = cart.items.find((entry) => entry.sku.toUpperCase().trim() === item.sku);
+    const totalQuantity = (existing?.quantity || 0) + item.quantity;
+    if (totalQuantity > inventory.stock) throw badRequest('Tổng số lượng trong giỏ vượt quá tồn kho khả dụng');
+    if (existing) {
+      Object.assign(existing, item, { quantity: totalQuantity });
     } else {
-      cart.items.push({
-        product: offlineItem.productId || offlineItem.product,
-        sku: offlineItem.sku.toUpperCase().trim(),
-        variantId: offlineItem.variantId || null,
-        name: offlineItem.name,
-        price: Number(offlineItem.price) || 0,
-        quantity: Number(offlineItem.quantity) || 1,
-        image: offlineItem.image || null,
-      });
+      cart.items.push(item);
     }
   }
 

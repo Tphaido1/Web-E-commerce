@@ -16,15 +16,15 @@ function Footer() {
           <h2>Khám phá</h2>
           <Link to="/">Trang chủ</Link>
           <Link to="/products">Sản phẩm</Link>
-          <a href="#categories">Danh mục</a>
+          <Link to="/#categories">Danh mục</Link>
         </div>
         <div>
           <h2>Hỗ trợ</h2>
-          <a href="#policy">Chính sách</a>
+          <span title="Thông tin chính sách chưa được cung cấp">Chính sách</span>
           <a href="#contact">Liên hệ</a>
-          <a href="#shipping">Giao hàng</a>
+          <span title="Thông tin giao hàng chưa được cung cấp">Giao hàng</span>
         </div>
-        <div className="footer-contact">
+        <div id="contact" className="footer-contact">
           <h2>Liên hệ</h2>
           <a href="mailto:hello@novamart.vn">hello@novamart.vn</a>
           <a href="tel:19001234">1900 1234</a>

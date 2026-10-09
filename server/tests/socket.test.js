@@ -1,3 +1,7 @@
+process.env.NODE_ENV = 'test';
+process.env.MONGO_URI = 'mongodb://127.0.0.1/socket-unit-placeholder';
+process.env.JWT_SECRET = 'socket-unit-access-test-only';
+process.env.JWT_REFRESH_SECRET = 'socket-unit-refresh-test-only';
 const {
   initializeSocket,
   authenticateSocket,
@@ -9,6 +13,8 @@ const {
 const http = require('http');
 const jwt = require('jsonwebtoken');
 const env = require('../src/config/env');
+const mongoose = require('mongoose');
+const User = require('../src/models/User.model');
 
 describe('Socket.io Real-time Engine & Room Partitioning Tests (Week 5)', () => {
   let httpServer;
@@ -81,8 +87,9 @@ describe('Socket.io Real-time Engine & Room Partitioning Tests (Week 5)', () => 
     toSpy.mockRestore();
   });
 
-  test('JWT Handshake Middleware: Giải mã token chính xác và cho phép xác thực', () => {
-    const fakeAdminId = 'admin_999';
+  test('JWT Handshake Middleware: Giải mã token chính xác và cho phép xác thực', async () => {
+    const fakeAdminId = new mongoose.Types.ObjectId().toString();
+    const userLookup = jest.spyOn(User, 'findById').mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: fakeAdminId, role: 'admin', isActive: true }) });
     const adminToken = jwt.sign({ sub: fakeAdminId, role: 'admin', type: 'access' }, env.JWT_SECRET);
 
     const mockSocket = {
@@ -92,11 +99,12 @@ describe('Socket.io Real-time Engine & Room Partitioning Tests (Week 5)', () => 
     };
     const nextFn = jest.fn();
 
-    authenticateSocket(mockSocket, nextFn);
+    await authenticateSocket(mockSocket, nextFn);
 
     expect(nextFn).toHaveBeenCalledWith();
     expect(mockSocket.user).toBeDefined();
     expect(mockSocket.user.sub).toBe(fakeAdminId);
     expect(mockSocket.user.role).toBe('admin');
+    userLookup.mockRestore();
   });
 });

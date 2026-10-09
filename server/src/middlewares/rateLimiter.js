@@ -40,13 +40,9 @@ function createRateLimiter(options = {}) {
   const statusCode = options.statusCode || 429;
   const keyGenerator =
     options.keyGenerator ||
-    ((req) => {
-      const forwarded = req.headers['x-forwarded-for'];
-      if (forwarded) {
-        return forwarded.split(',')[0].trim();
-      }
-      return req.ip || req.socket.remoteAddress || '127.0.0.1';
-    });
+    // Express resolves req.ip using its configured trusted proxies. Never accept
+    // an arbitrary client-supplied X-Forwarded-For value as the limiter key.
+    ((req) => req.ip || req.socket?.remoteAddress || '127.0.0.1');
 
   const store = new Map();
 

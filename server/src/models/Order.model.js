@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 
 const orderItemSchema = new mongoose.Schema(
   {
+    // Ownership snapshot: later catalog reassignment must not transfer old orders.
+    vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     product: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
@@ -13,6 +15,7 @@ const orderItemSchema = new mongoose.Schema(
       uppercase: true,
       trim: true,
     },
+    stockSource: { type: String, enum: ['inventory', 'product'], default: null },
     variantId: {
       type: String,
       trim: true,

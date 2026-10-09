@@ -1,80 +1,170 @@
-const CACHE_NAME = 'ecommerce-pwa-cache-v1';
+const CACHE_PREFIX = 'storefront-pwa-';
+const CACHE_NAME = `${CACHE_PREFIX}shell-v3`;
+const IMAGE_CACHE_NAME = `${CACHE_PREFIX}images-v3`;
+const MAX_CACHED_IMAGES = 100;
+const APP_SHELL = '/index.html';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
+  APP_SHELL,
   '/manifest.json',
-  '/favicon.ico',
+  '/icons/icon-192.svg',
+  '/icons/icon-512.svg',
 ];
+const PUBLIC_API_PREFIX = '/api/v1/products';
 
-// Cài đặt Service Worker và cache các tài nguyên tĩnh nền tảng
+function getBuildAssets(html) {
+  const assets = new Set(STATIC_ASSETS);
+  for (const match of html.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
+    const tag = match[0];
+    if (!/\btype=["']module["']|\brel=["'](?:modulepreload|stylesheet)["']/i.test(tag)) continue;
+    const source = tag.match(/\b(?:src|href)=["']([^"']+)["']/i)?.[1];
+    if (source?.startsWith('/')) assets.add(source);
+  }
+  return [...assets];
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('📦 [ServiceWorker] Pre-caching static offline assets');
-      return cache.addAll(STATIC_ASSETS);
-    })
-  );
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const response = await fetch(APP_SHELL, { cache: 'reload' });
+    if (!response.ok) throw new Error(`Unable to fetch app shell: ${response.status}`);
+    const html = await response.clone().text();
+    await cache.put(APP_SHELL, response);
+    await cache.addAll(getBuildAssets(html));
+    await self.skipWaiting();
+  })());
 });
 
-// Kích hoạt và dọn dẹp các cache cũ
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keyList) => {
-      return Promise.all(
-        keyList.map((key) => {
-          if (key !== CACHE_NAME) {
-            console.log('🧹 [ServiceWorker] Clearing old cache:', key);
-            return caches.delete(key);
-          }
-        })
-      );
-    })
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys
+      .filter((key) => key.startsWith(CACHE_PREFIX) && ![CACHE_NAME, IMAGE_CACHE_NAME].includes(key))
+      .map((key) => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
 
-// Xử lý fetch request: Chiến lược Network-First with Cache Fallback cho API & Cache-First cho Assets
+async function handlePublicProductRequest(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const hasAuth = request.headers.has('Authorization');
+  try {
+    const response = await fetch(request);
+    const cacheControl = response.headers.get('Cache-Control') || '';
+    if (
+      response.ok
+      && !hasAuth
+      && !/\b(?:private|no-store)\b/i.test(cacheControl)
+    ) {
+      try {
+        await cache.put(request, response.clone());
+      } catch (cacheError) {
+        console.warn('[PWA] Unable to cache public product response:', cacheError);
+      }
+    }
+    return response;
+  } catch {
+    const cachedResponse = hasAuth ? null : await cache.match(request);
+    if (cachedResponse) {
+      const headers = new Headers(cachedResponse.headers);
+      headers.set('X-Offline-Cache', 'hit');
+      return new Response(cachedResponse.body, {
+        status: cachedResponse.status,
+        statusText: cachedResponse.statusText,
+        headers,
+      });
+    }
+    return new Response(JSON.stringify({
+      status: 'error',
+      message: 'This product data is not available offline.',
+      offline: true,
+    }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json', 'X-Offline-Cache': 'miss' },
+    });
+  }
+}
+
+async function handleNavigation(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      try {
+        await cache.put(APP_SHELL, response.clone());
+      } catch (cacheError) {
+        console.warn('[PWA] Unable to update the offline app shell:', cacheError);
+      }
+    }
+    return response;
+  } catch {
+    const shell = await cache.match(APP_SHELL);
+    if (shell) return shell;
+    return new Response('The app shell is not available offline.', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
+  }
+}
+
+async function handleStaticAsset(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request, { ignoreVary: true });
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (response.ok) {
+    try {
+      await cache.put(request, response.clone());
+    } catch (cacheError) {
+      console.warn('[PWA] Unable to cache static asset:', cacheError);
+    }
+  }
+  return response;
+}
+
+async function handleExternalImage(request) {
+  const cache = await caches.open(IMAGE_CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    if (response.ok || response.type === 'opaque') {
+      try {
+        await cache.put(request, response.clone());
+        const cachedRequests = await cache.keys();
+        if (cachedRequests.length > MAX_CACHED_IMAGES) {
+          await cache.delete(cachedRequests[0]);
+        }
+      } catch (cacheError) {
+        console.warn('[PWA] Unable to cache public image:', cacheError);
+      }
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return Response.error();
+  }
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
-
-  // Chỉ can thiệp các request GET
   if (request.method !== 'GET') return;
 
-  // Với API lấy danh mục/sản phẩm: Network-First rồi fallback về Cache
-  if (url.pathname.includes('/api/v1/products') || url.pathname.includes('/api/v1/categories')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          console.log('📡 [ServiceWorker] Mạng ngoại tuyến -> Phục vụ từ Cache:', request.url);
-          return caches.match(request);
-        })
-    );
+  const url = new URL(request.url);
+  if (url.origin === self.location.origin && url.pathname.startsWith(PUBLIC_API_PREFIX)) {
+    event.respondWith(handlePublicProductRequest(request));
     return;
   }
 
-  // Với tài nguyên tĩnh: Cache-First
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(request).catch(() => {
-        // Fallback về trang chủ nếu mất mạng khi duyệt URL
-        if (request.headers.get('accept')?.includes('text/html')) {
-          return caches.match('/');
-        }
-      });
-    })
-  );
+  if (url.origin !== self.location.origin) {
+    if (request.destination === 'image' && request.credentials !== 'include') {
+      event.respondWith(handleExternalImage(request));
+    }
+    return;
+  }
+  if (request.mode === 'navigate') {
+    event.respondWith(handleNavigation(request));
+    return;
+  }
+  if (['font', 'image', 'manifest', 'script', 'style'].includes(request.destination)) {
+    event.respondWith(handleStaticAsset(request));
+  }
 });

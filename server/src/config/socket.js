@@ -1,13 +1,17 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const env = require('./env');
+const mongoose = require('mongoose');
+const Order = require('../models/Order.model');
+const User = require('../models/User.model');
+const { canManageWholeOrder } = require('../utils/vendorScope.util');
 
 let ioInstance = null;
 
 /**
  * Middleware xác thực JWT khi bắt tay kết nối (Handshake Auth)
  */
-const authenticateSocket = (socket, next) => {
+const authenticateSocket = async (socket, next) => {
   const token =
     socket.handshake.auth?.token ||
     socket.handshake.headers?.authorization?.replace('Bearer ', '') ||
@@ -16,7 +20,11 @@ const authenticateSocket = (socket, next) => {
   if (token) {
     try {
       const decoded = jwt.verify(token, env.JWT_SECRET);
-      socket.user = decoded;
+      socket.user = null;
+      if (decoded.type === 'access' && mongoose.isValidObjectId(decoded.sub)) {
+        const user = await User.findById(decoded.sub).select('_id role isActive');
+        if (user && user.isActive !== false) socket.user = { ...decoded, sub: String(user._id), role: user.role };
+      }
     } catch {
       // Cho phép kết nối vãng lai (guest) nhưng không gán thông tin user
       socket.user = null;
@@ -55,6 +63,9 @@ const initializeSocket = (httpServer) => {
   io.on('connection', (socket) => {
     const userId = socket.user?.sub || socket.user?._id;
     const role = socket.user?.role;
+    const expiresAt = socket.user?.exp && socket.user.exp * 1000;
+    const expiryTimer = expiresAt ? setTimeout(() => socket.disconnect?.(true), Math.max(0, expiresAt - Date.now())) : null;
+    if (expiryTimer) expiryTimer.unref();
 
     // Tự động phân vùng Room dựa trên thông tin định danh
     if (userId) {
@@ -74,10 +85,24 @@ const initializeSocket = (httpServer) => {
     }
 
     // Cho phép client chủ động đăng ký theo dõi một đơn hàng cụ thể (VD: trang Live Tracking)
-    socket.on('join_order_room', (orderId) => {
-      if (orderId) {
-        socket.join(`order_${orderId}`);
-        console.log(`📦 [Socket.io] Socket ${socket.id} đang theo dõi đơn: order_${orderId}`);
+    socket.on('join_order_room', async (orderId, acknowledge) => {
+      const respond = (allowed) => {
+        if (typeof acknowledge === 'function') acknowledge({ success: allowed });
+      };
+      if (!userId || !mongoose.isValidObjectId(orderId) ||
+          (socket.user.exp && socket.user.exp * 1000 <= Date.now())) return respond(false);
+      try {
+        const filter = { _id: orderId };
+        if (role === 'vendor') filter['items.vendor'] = userId;
+        else if (role !== 'admin') filter.user = userId;
+        const order = await Order.findOne(filter).select('_id items.vendor');
+        // Mixed orders use the Vendor room; the full-order room is shared with
+        // customer/Admin and must not expose another Vendor's payment details.
+        if (!order || !socket.connected || !canManageWholeOrder(order, { role, _id: userId })) return respond(false);
+        await socket.join('order_' + orderId);
+        return respond(true);
+      } catch {
+        return respond(false);
       }
     });
 
@@ -88,6 +113,7 @@ const initializeSocket = (httpServer) => {
     });
 
     socket.on('disconnect', (reason) => {
+      if (expiryTimer) clearTimeout(expiryTimer);
       console.log(`🔌 [Socket.io] Socket ${socket.id} ngắt kết nối (${reason})`);
     });
   });

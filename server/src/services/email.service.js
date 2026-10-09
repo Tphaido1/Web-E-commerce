@@ -37,9 +37,10 @@ class EmailService {
    * @returns {string}
    */
   static generateTrackingToken(orderId, createdAt) {
+    const secret = env.HMAC_SECRET;
+    if (!secret || /^your[_-]/i.test(secret) || ['order_hmac_secret_key_default', 'top1_order_hmac_secret_key_2026_secure'].includes(secret)) return null;
     const timestamp = new Date(createdAt).getTime();
     const data = `${orderId}:${timestamp}`;
-    const secret = env.HMAC_SECRET || 'order_hmac_secret_key_default';
     return crypto.createHmac('sha256', secret).update(data).digest('hex');
   }
 
@@ -51,8 +52,9 @@ class EmailService {
    * @returns {boolean}
    */
   static verifyTrackingToken(orderId, createdAt, token) {
-    if (!token) return false;
+    if (typeof token !== 'string' || !/^[a-f\d]{64}$/i.test(token)) return false;
     const expected = this.generateTrackingToken(orderId, createdAt);
+    if (!expected) return false;
     try {
       return crypto.timingSafeEqual(Buffer.from(token, 'hex'), Buffer.from(expected, 'hex'));
     } catch {
@@ -67,7 +69,7 @@ class EmailService {
    * @returns {Promise<string>} Data URL base64 của QR
    */
   static async generateQRCodeDataUrl(orderCode, trackingToken) {
-    const trackingUrl = `${env.CLIENT_URL}/track-order?code=${encodeURIComponent(orderCode)}&token=${encodeURIComponent(trackingToken)}`;
+    const trackingUrl = `${env.CLIENT_URL}/track-order?code=${encodeURIComponent(orderCode)}${trackingToken ? `&token=${encodeURIComponent(trackingToken)}` : ''}`;
     return QRCode.toDataURL(trackingUrl, {
       errorCorrectionLevel: 'H',
       type: 'image/png',

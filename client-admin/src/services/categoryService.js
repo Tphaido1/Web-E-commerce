@@ -1,23 +1,35 @@
-import { categorySeed } from './mockData.js';
+import api from './api.js';
 
-let categories = [...categorySeed];
-
-const nextCategoryId = () => {
-  const usedIds = categories.map((category) => Number(category.id.replace('CAT-', ''))).filter(Number.isFinite);
-  return `CAT-${String(Math.max(0, ...usedIds) + 1).padStart(3, '0')}`;
-};
+const getPayload = ({ name, description, status }) => ({
+  name,
+  description: description || '',
+  isActive: status === 'Active',
+});
 
 export const categoryService = {
-  list: () => [...categories],
-  create: (values) => {
-    const category = { ...values, key: `cat-${Date.now()}`, id: nextCategoryId(), productCount: 0 };
-    categories = [category, ...categories];
-    return category;
+  async list(config = {}) {
+    const response = await api.get('/categories', { ...config, params: { all: true } });
+    return response.data.data;
   },
-  update: (key, values) => {
-    categories = categories.map((category) => (category.key === key ? { ...category, ...values } : category));
+
+  async listActive(config = {}) {
+    const response = await api.get('/categories', config);
+    return response.data.data;
   },
-  remove: (key) => {
-    categories = categories.filter((category) => category.key !== key);
+
+  async create(values) {
+    const { name, description } = getPayload(values);
+    const response = await api.post('/categories', { name, description });
+    return response.data.data;
+  },
+
+  async update(id, values) {
+    const response = await api.put(`/categories/${id}`, getPayload(values));
+    return response.data.data;
+  },
+
+  async remove(id) {
+    const response = await api.delete(`/categories/${id}`);
+    return response.data.data;
   },
 };

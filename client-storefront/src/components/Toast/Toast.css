@@ -1,0 +1,10 @@
+.toast-viewport { position: fixed; right: max(1rem, env(safe-area-inset-right)); bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 2000; width: min(380px, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; display: grid; gap: .75rem; pointer-events: none; }
+.storefront-toast { display: flex; gap: .75rem; justify-content: space-between; align-items: flex-start; padding: .9rem 1rem; background: #fff; color: #20312a; border: 1px solid #d6e2dc; border-left: 5px solid #346750; border-radius: 8px; box-shadow: 0 8px 30px #122b2426; pointer-events: auto; animation: toast-enter .18s ease-out; }
+.storefront-toast-error { border-left-color: #a3312c; color: #772320; }
+.storefront-toast-info { border-left-color: #345e89; color: #254767; }
+.storefront-toast strong { font-size: .85rem; }
+.storefront-toast p { margin: .3rem 0 0; font-size: .9rem; line-height: 1.45; overflow-wrap: anywhere; }
+.storefront-toast button { flex-shrink: 0; display: grid; place-items: center; width: 44px; height: 44px; margin: -.45rem -.5rem 0 0; color: inherit; background: transparent; border: 0; border-radius: 4px; font-size: 1.5rem; cursor: pointer; }
+.storefront-toast button:focus-visible { outline: 3px solid #345e89; outline-offset: 2px; }
+@keyframes toast-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .storefront-toast { animation: none; } }

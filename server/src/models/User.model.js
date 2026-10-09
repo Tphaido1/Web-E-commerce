@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
   {
+    isActive: { type: Boolean, default: true, index: true },
     email: {
       type: String,
       required: [true, 'Email là bắt buộc'],

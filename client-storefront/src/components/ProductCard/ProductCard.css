@@ -1,0 +1,7 @@
+.product-title-link { color: inherit; }
+.product-title-link:hover { color: var(--coral); }
+.product-card > .product-image-wrap { display: block; flex-shrink: 0; }
+.product-prices { flex-wrap: wrap; }
+.product-discount { padding: .2rem .35rem; color: #9d392f; background: #fce9e5; font-size: .68rem; font-weight: 700; }
+.product-availability { margin: 0 0 .85rem; color: #246044; font-size: .75rem; font-weight: 700; }
+.product-availability.is-out-of-stock { color: var(--muted); }

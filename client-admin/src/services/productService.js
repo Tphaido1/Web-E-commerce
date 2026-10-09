@@ -1,20 +1,28 @@
-import { productSeed } from './mockData.js';
-
-let products = [...productSeed];
+import api from './api.js';
 
 export const productService = {
-  list: () => [...products],
-  get: (id) => products.find((product) => product.id === id),
-  isSkuTaken: (sku, excludeId) => products.some((product) => product.sku.toLowerCase() === sku.trim().toLowerCase() && product.id !== excludeId),
-  create: (values) => {
-    const product = { ...values, id: `prod-${Date.now()}`, key: `prod-${Date.now()}` };
-    products = [product, ...products];
-    return product;
+  async list(params, config = {}) {
+    const response = await api.get('/products/managed', { params, ...config });
+    return response.data.data;
   },
-  update: (id, values) => {
-    products = products.map((product) => (product.id === id ? { ...product, ...values } : product));
+
+  async get(id, config = {}) {
+    const response = await api.get(`/products/${id}`, config);
+    return response.data.data;
   },
-  remove: (id) => {
-    products = products.filter((product) => product.id !== id);
+
+  async create(values) {
+    const response = await api.post('/products', values);
+    return response.data.data;
+  },
+
+  async update(id, values) {
+    const response = await api.put(`/products/${id}`, values);
+    return response.data.data;
+  },
+
+  async remove(id) {
+    const response = await api.delete(`/products/${id}`);
+    return response.data.data;
   },
 };

@@ -75,7 +75,9 @@ app.use(mongoSanitize());
 app.use(xssSanitize());
 
 // 5. Chống HTTP Parameter Pollution (HPP)
-app.use(hppSanitize(['category', 'sort', 'status']));
+// Current API filters are scalar; repeated values must be normalized before
+// category.trim() and enum/sort validation in the controllers.
+app.use(hppSanitize());
 
 // ----- Root Router -----
 // Toàn bộ API sẽ có tiền tố /api/v1 và áp dụng Rate Limiter chống spam DDoS

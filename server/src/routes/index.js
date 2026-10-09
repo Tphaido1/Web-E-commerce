@@ -20,6 +20,9 @@ const paymentRoutes = require('./payment.routes');
 const reviewRoutes = require('./review.routes');
 const syncRoutes = require('./sync.routes');
 const securityRoutes = require('./security.routes');
+const inventoryRoutes = require('./inventory.routes');
+const userRoutes = require('./user.routes');
+const analyticsRoutes = require('./analytics.routes');
 
 const router = express.Router();
 
@@ -34,5 +37,8 @@ router.use('/payments', paymentRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/sync', syncRoutes);
 router.use('/security', securityRoutes);
+router.use('/inventory', inventoryRoutes);
+router.use('/users', userRoutes);
+router.use('/analytics', analyticsRoutes);
 
 module.exports = router;

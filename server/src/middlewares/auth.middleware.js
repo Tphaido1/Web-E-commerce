@@ -21,7 +21,7 @@ const protect = catchAsync(async (req, res, next) => {
   }
 
   const user = await User.findById(payload.sub);
-  if (!user) {
+  if (!user || user.isActive === false) {
     const error = new Error('Tài khoản không còn tồn tại');
     error.statusCode = 401;
     throw error;
