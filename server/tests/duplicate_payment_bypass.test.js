@@ -21,6 +21,18 @@ describe('Duplicate Payment & Validation Bypass Integration Tests (Week 6 - Memb
   const mockOrderId = new mongoose.Types.ObjectId();
   const orderCode = 'ORD-20261002-CONCUR01';
 
+  const signParams = (params) => {
+    const payload = {
+      vnp_TmnCode: env.VNP_TMN_CODE,
+      vnp_TransactionStatus: '00',
+      ...params,
+    };
+    return {
+      ...payload,
+      vnp_SecureHash: calculateVNPaySecureHash(payload, secretKey),
+    };
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -39,6 +51,7 @@ describe('Duplicate Payment & Validation Bypass Integration Tests (Week 6 - Memb
         orderCode,
         user: mockUserId,
         finalAmount: 500000,
+        paymentMethod: 'VNPAY',
         shippingAddress: { fullName: 'Khách Hàng Mẫu' },
         trackingHistory: [],
         get paymentStatus() {
@@ -59,8 +72,15 @@ describe('Duplicate Payment & Validation Bypass Integration Tests (Week 6 - Memb
         }),
       };
 
-      // Mock Order.findOne trả về mockOrder với trạng thái động
+      // Mock Order.findOne và Order.findOneAndUpdate trả về mockOrder với trạng thái động
       Order.findOne.mockImplementation(async () => mockOrder);
+      Order.findOneAndUpdate.mockImplementation(async (filter, update) => {
+        if (currentPaymentStatus === 'paid') return null;
+        currentPaymentStatus = update.$set.paymentStatus;
+        if (update.$set.status) currentStatus = update.$set.status;
+        saveCount += 1;
+        return mockOrder;
+      });
       AuditLogService.logPaymentTransaction.mockResolvedValue({});
 
       // Tạo tham số hợp lệ cho IPN
@@ -72,10 +92,10 @@ describe('Duplicate Payment & Validation Bypass Integration Tests (Week 6 - Memb
         vnp_BankCode: 'NCB',
         vnp_PayDate: '20261002210000',
       };
-      const secureHash = calculateVNPaySecureHash(validParams, secretKey);
+      const signedQuery = signParams(validParams);
 
       const makeIpnCall = () => {
-        const req = { query: { ...validParams, vnp_SecureHash: secureHash } };
+        const req = { query: signedQuery };
         const res = {
           status: jest.fn().mockReturnThis(),
           json: jest.fn().mockReturnThis(),
@@ -200,13 +220,9 @@ describe('Duplicate Payment & Validation Bypass Integration Tests (Week 6 - Memb
         vnp_ResponseCode: '00',
         vnp_TransactionNo: 'HACKER_TXN_01',
       };
-      const validHashForManipulatedParams = calculateVNPaySecureHash(manipulatedParams, secretKey);
 
       const req = {
-        query: {
-          ...manipulatedParams,
-          vnp_SecureHash: validHashForManipulatedParams,
-        },
+        query: signParams(manipulatedParams),
       };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
 
@@ -232,9 +248,8 @@ describe('Duplicate Payment & Validation Bypass Integration Tests (Week 6 - Memb
         vnp_Amount: '20000000',
         vnp_ResponseCode: '00',
       };
-      const hash = calculateVNPaySecureHash(params, secretKey);
 
-      const req = { query: { ...params, vnp_SecureHash: hash } };
+      const req = { query: signParams(params) };
       const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
 
       await vnpayIpn(req, res);
