@@ -1,0 +1,16 @@
+.orders-page { max-width: 1050px; min-height: 55vh; margin: 0 auto; padding: 4rem 1.5rem 6rem; }
+.orders-heading { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 2rem; }
+.orders-heading h1 { margin: 0; font-family: var(--display-font); font-size: clamp(2.2rem, 5vw, 3.5rem); }
+.orders-filter { display: grid; gap: .4rem; color: var(--muted); font-size: .78rem; font-weight: 700; }
+.orders-filter select { min-width: 190px; min-height: 42px; padding: .5rem .7rem; color: var(--ink); background: white; border: 1px solid var(--line); border-radius: 3px; font: inherit; }
+.orders-list { display: grid; gap: 1rem; }
+.order-card { padding: 1.4rem; background: #f2eee7; }
+.order-card-heading, .order-card-info { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.order-card-heading > div { display: grid; gap: .25rem; }.order-card-heading > div span, .order-card-info > span { color: var(--muted); font-size: .78rem; }
+.order-card-heading strong { color: var(--ink); font-size: 1rem; }
+.order-card-info { justify-content: flex-start; flex-wrap: wrap; margin: 1rem 0; padding: .9rem 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.order-card-info > span, .order-card-info > strong { margin-right: auto; }.order-card-info > strong { color: var(--ink); }
+.order-detail-link, .orders-state a, .order-detail-actions a, .track-order-state a { color: var(--coral); font-size: .85rem; font-weight: 800; }
+.orders-state { display: grid; min-height: 250px; place-content: center; justify-items: center; gap: .75rem; padding: 2rem; background: #f2eee7; text-align: center; }
+.orders-state h2 { margin: 0; font-family: var(--display-font); }.orders-state p { color: #9d392f; }.orders-state button, .orders-pagination button, .track-order-form button { min-height: 42px; padding: .65rem 1rem; color: #fff; background: var(--ink); border: 0; cursor: pointer; font: inherit; font-weight: 700; }.orders-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 2rem; }.orders-pagination span { color: var(--muted); font-size: .85rem; }.orders-pagination button:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 640px) { .orders-page { padding: 3rem 1rem 4rem; }.orders-heading { align-items: stretch; flex-direction: column; }.orders-filter select { width: 100%; }.order-card { padding: 1rem; }.order-card-heading, .order-card-info { align-items: flex-start; flex-direction: column; }.order-card-info > span, .order-card-info > strong { margin-right: 0; }.orders-pagination { gap: .5rem; }.orders-pagination button { padding: .5rem; font-size: .75rem; } }

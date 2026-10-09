@@ -20,6 +20,7 @@ describe('High Concurrency & Flash Sale Race-Condition Tests (Level 5 Verificati
 
   beforeEach(() => {
     jest.clearAllMocks();
+    Inventory.findOne.mockImplementation(async ({ sku }) => ({ sku, product: flashSaleProductId, stock: 10 }));
     EmailService.sendOrderConfirmationEmail.mockResolvedValue({
       success: true,
       trackingToken: 'token',
@@ -42,7 +43,7 @@ describe('High Concurrency & Flash Sale Race-Condition Tests (Level 5 Verificati
     });
 
     Inventory.findOne.mockImplementation(async () => {
-      return { sku: flashSaleSku, stock: mockStockInDb };
+      return { sku: flashSaleSku, product: flashSaleProductId, stock: mockStockInDb };
     });
 
     // Mock Product
@@ -188,6 +189,7 @@ describe('High Concurrency & Flash Sale Race-Condition Tests (Level 5 Verificati
       validateForOrder: jest.fn().mockReturnValue({ isValid: true }),
       calculateDiscount: jest.fn().mockReturnValue(50000),
       usageLimit: 100,
+      userLimit: 1,
     };
     Coupon.findOne.mockResolvedValue(mockCoupon);
 

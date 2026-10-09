@@ -5,6 +5,16 @@ describe('Email & QR Service Unit Tests (Level 4 Verification Ladder)', () => {
   const orderId = new mongoose.Types.ObjectId().toString();
   const createdAt = new Date('2026-09-26T12:00:00.000Z');
 
+  test.each(['', 'order_hmac_secret_key_default', 'top1_order_hmac_secret_key_2026_secure', 'your_secret_change_me'])('missing/public QR key %s cannot grant private tracking access', secret => {
+    const env = require('../src/config/env');
+    const previous = env.HMAC_SECRET;
+    try {
+      env.HMAC_SECRET = secret;
+      expect(EmailService.generateTrackingToken(orderId, createdAt)).toBeNull();
+      expect(EmailService.verifyTrackingToken(orderId, createdAt, 'a'.repeat(64))).toBe(false);
+    } finally { env.HMAC_SECRET = previous; }
+  });
+
   test('HMAC-SHA256: Sinh mã xác thực nhất quán và chống giả mạo', () => {
     const token1 = EmailService.generateTrackingToken(orderId, createdAt);
     const token2 = EmailService.generateTrackingToken(orderId, createdAt);

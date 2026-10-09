@@ -146,11 +146,22 @@ function sanitizeXss(data) {
  */
 function xssSanitize() {
   return (req, res, next) => {
+    // Credentials are opaque strings used by bcrypt/JWT, never HTML. Rewriting
+    // them changes authentication semantics. NoSQL sanitization and controller
+    // string validation still run before these values reach authentication.
+    const isAuthRequest = /^\/api\/v1\/auth\/(login|register|refresh-token)\/?$/i.test(req.path || '');
+    const credentials = {};
+    if (isAuthRequest && req.body && typeof req.body === 'object') {
+      ['password', 'refreshToken'].forEach((key) => {
+        if (typeof req.body[key] === 'string') credentials[key] = req.body[key];
+      });
+    }
     ['body', 'query', 'params'].forEach((target) => {
       if (req[target]) {
         req[target] = sanitizeXss(req[target]);
       }
     });
+    if (isAuthRequest && req.body) Object.assign(req.body, credentials);
     next();
   };
 }

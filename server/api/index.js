@@ -11,6 +11,7 @@
 
 const app = require('../src/app');
 const connectDB = require('../src/config/db');
+const ApiResponse = require('../src/utils/apiResponse');
 
 module.exports = async (req, res) => {
   // Đảm bảo kết nối MongoDB được khởi tạo trước khi xử lý request
@@ -19,6 +20,7 @@ module.exports = async (req, res) => {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('❌ Lỗi kết nối MongoDB trong Vercel Serverless Function:', err.message);
+    return ApiResponse.error(res, 503, 'Cơ sở dữ liệu tạm thời không khả dụng. Vui lòng thử lại sau.');
   }
 
   // Chuyển quyền điều khiển cho Express App

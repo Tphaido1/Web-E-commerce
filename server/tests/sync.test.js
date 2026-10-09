@@ -21,6 +21,7 @@ describe('Offline Sync Queue Tests (Week 6 - Thành viên A & PWA Support)', () 
 
   beforeEach(() => {
     jest.clearAllMocks();
+    Inventory.findOne.mockImplementation(async ({ sku }) => ({ sku, product: mockProductId, stock: 10 }));
     req = {
       user: { _id: mockUserId, email: 'sync@pwa.com' },
       body: {},
@@ -57,6 +58,7 @@ describe('Offline Sync Queue Tests (Week 6 - Thành viên A & PWA Support)', () 
         // Đơn 2: Đã có trong DB
         .mockResolvedValueOnce({
           orderCode: 'ORD-ALREADY-SYNCED',
+          user: mockUserId,
           status: 'pending',
           finalAmount: 150000,
         });
@@ -127,8 +129,8 @@ describe('Offline Sync Queue Tests (Week 6 - Thành viên A & PWA Support)', () 
     test('Hợp nhất giỏ hàng offline vào giỏ hàng online của User', async () => {
       req.body = {
         items: [
-          { sku: 'EXISTING-ITEM', quantity: 2, price: 50000, name: 'Item 1' },
-          { sku: 'NEW-ITEM', quantity: 1, price: 100000, name: 'Item 2' },
+          { productId: mockProductId, sku: 'EXISTING-ITEM', quantity: 2, price: 1, name: 'Forged Item 1' },
+          { productId: mockProductId, sku: 'NEW-ITEM', quantity: 1, price: 1, name: 'Forged Item 2' },
         ],
       };
 
@@ -138,6 +140,8 @@ describe('Offline Sync Queue Tests (Week 6 - Thành viên A & PWA Support)', () 
         save: jest.fn().mockResolvedValue(true),
       };
       Cart.findOne.mockResolvedValue(mockCart);
+      Product.findById.mockResolvedValue({ _id: mockProductId, name: 'Canonical item', price: 50000, isActive: true, variants: [{ sku: 'EXISTING-ITEM', price: 50000 }, { sku: 'NEW-ITEM', price: 100000 }] });
+      Inventory.findOne.mockImplementation(async ({ sku }) => ({ sku, product: mockProductId, stock: 10 }));
 
       await syncOfflineCart(req, res, next);
 

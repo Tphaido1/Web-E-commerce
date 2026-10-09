@@ -27,6 +27,8 @@ const variantSchema = new mongoose.Schema(
 
 const productSchema = new mongoose.Schema(
   {
+    // Legacy products remain unassigned and are managed by Admin only.
+    vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     name: {
       type: String,
       required: [true, 'Tên sản phẩm là bắt buộc'],

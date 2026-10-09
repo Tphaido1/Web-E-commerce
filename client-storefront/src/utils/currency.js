@@ -5,3 +5,11 @@ export function formatCurrency(value) {
   if (!Number.isFinite(numericValue)) return 'Liên hệ';
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(numericValue);
 }
+
+// Match the server cart/checkout rule for the selected catalog price.
+export function resolveProductPrice(product, variant = null) {
+  const basePrice = Number(variant ? variant.price : product?.price);
+  const salePrice = Number(product?.salePrice);
+  return Number.isFinite(basePrice) && Number.isFinite(salePrice)
+    && salePrice > 0 && salePrice < basePrice ? salePrice : basePrice;
+}

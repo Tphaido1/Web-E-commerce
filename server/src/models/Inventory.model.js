@@ -35,6 +35,8 @@ const inventorySchema = new mongoose.Schema(
     lowStockThreshold: {
       type: Number,
       default: 5,
+      min: 0,
+      validate: Number.isSafeInteger,
     },
   },
   {

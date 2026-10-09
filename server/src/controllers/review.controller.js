@@ -3,6 +3,7 @@ const Order = require('../models/Order.model');
 const Product = require('../models/Product.model');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
+const { isVendor } = require('../utils/vendorScope.util');
 
 /**
  * GỬI ĐÁNH GIÁ SẢN PHẨM (YÊU CẦU ĐÃ MUA HÀNG - VERIFIED PURCHASE)
@@ -167,6 +168,9 @@ const getAllReviews = catchAsync(async (req, res) => {
   const skip = (page - 1) * limit;
 
   const filter = {};
+  if (isVendor(req.user)) {
+    filter.product = { $in: await Product.distinct('_id', { vendor: req.user._id }) };
+  }
   if (req.query.status) {
     filter.status = req.query.status;
   }

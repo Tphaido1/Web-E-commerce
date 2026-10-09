@@ -7,4 +7,9 @@ body { margin: 0; color: var(--ink); background: var(--paper); font-family: 'DM 
 button, input { font: inherit; }
 a { text-decoration: none; transition: color 160ms ease, background-color 160ms ease, transform 160ms ease; }
 button { transition: color 160ms ease, background-color 160ms ease, transform 160ms ease; }
+:focus-visible { outline: 3px solid #bf503f; outline-offset: 3px; }
+button:disabled { cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
 .placeholder-page { display: grid; min-height: 60vh; place-items: center; align-content: center; gap: .5rem; text-align: center; }.placeholder-page h1 { font-family: var(--display-font); }.placeholder-page p { color: var(--muted); }

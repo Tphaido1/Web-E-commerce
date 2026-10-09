@@ -28,6 +28,22 @@
   color: #ffffff;
 }
 
+.sync-error {
+  background: #9d392f;
+  color: #ffffff;
+}
+
+.offline-banner button {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
 .offline-icon {
   font-size: 16px;
 }

@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build:deploy"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache, max-age=0, must-revalidate"

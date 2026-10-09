@@ -2,7 +2,8 @@ const crypto = require('crypto');
 const querystring = require('querystring');
 const Order = require('../models/Order.model');
 const AuditLogService = require('../services/auditLog.service');
-const { notifyAdmin, notifyUser, notifyOrderUpdate } = require('../config/socket');
+const { getIo, notifyAdmin, notifyUser, notifyOrderUpdate } = require('../config/socket');
+const { canManageWholeOrder, notifyOrderVendors } = require('../utils/vendorScope.util');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
 const env = require('../config/env');
@@ -11,14 +12,12 @@ const env = require('../config/env');
  * Format Date thành YYYYMMDDHHmmss theo chuẩn VNPay
  */
 const formatVNPayDate = (date) => {
-  const pad = (n) => (n < 10 ? '0' + n : n);
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  const seconds = pad(date.getSeconds());
-  return `${year}${month}${day}${hours}${minutes}${seconds}`;
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}${values.month}${values.day}${values.hour}${values.minute}${values.second}`;
 };
 
 /**
@@ -45,7 +44,7 @@ const sortObject = (obj) => {
  */
 const calculateVNPaySecureHash = (params, secretKey) => {
   const sortedParams = sortObject(params);
-  const signData = querystring.stringify(sortedParams, { encode: false });
+  const signData = querystring.stringify(sortedParams, '&', '=', { encodeURIComponent: (value) => value });
   const hmac = crypto.createHmac('sha512', secretKey);
   return hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 };
@@ -54,23 +53,35 @@ const calculateVNPaySecureHash = (params, secretKey) => {
  * Xác thực chữ ký số từ request của VNPay
  */
 const verifyVNPaySecureHash = (query, secretKey) => {
+  if (!secretKey || !query || Object.values(query).some(value => typeof value !== 'string' && typeof value !== 'number')) return false;
   const vnpParams = { ...query };
   const secureHash = vnpParams['vnp_SecureHash'];
 
   delete vnpParams['vnp_SecureHash'];
   delete vnpParams['vnp_SecureHashType'];
 
+  if (typeof secureHash !== 'string' || !/^[a-f\d]{128}$/i.test(secureHash)) return false;
   const calculatedHash = calculateVNPaySecureHash(vnpParams, secretKey);
-
-  if (!secureHash) return false;
-  return secureHash.toLowerCase() === calculatedHash.toLowerCase();
+  return crypto.timingSafeEqual(Buffer.from(secureHash, 'hex'), Buffer.from(calculatedHash, 'hex'));
 };
+
+const isVNPayConfigured = () => Boolean(env.VNP_TMN_CODE && env.VNP_HASH_SECRET &&
+  (env.NODE_ENV === 'test' || !['RAHZANVOWZGCLUTNZJNXGUSYDJAEXMGS', 'your_vnpay_hash_secret'].includes(env.VNP_HASH_SECRET)));
+
+const validCallback = (params) => params.vnp_TmnCode === env.VNP_TMN_CODE &&
+  typeof params.vnp_TxnRef === 'string' && /^[\w-]{1,100}$/.test(params.vnp_TxnRef) &&
+  /^\d{2}$/.test(params.vnp_ResponseCode) && /^\d{2}$/.test(params.vnp_TransactionStatus) &&
+  /^\d+$/.test(params.vnp_Amount) && Number.isSafeInteger(Number(params.vnp_Amount)) &&
+  (!params.vnp_CurrCode || params.vnp_CurrCode === 'VND');
+
+const callbackSucceeded = params => params.vnp_ResponseCode === '00' && params.vnp_TransactionStatus === '00';
 
 /**
  * TẠO URL DẪN SANG CỔNG THANH TOÁN VNPAY SANDBOX
  * POST /api/v1/payments/create-vnpay-url
  */
 const createVNPayPaymentUrl = catchAsync(async (req, res) => {
+  if (!isVNPayConfigured()) throw Object.assign(new Error('VNPay chưa được cấu hình merchant. Vui lòng chọn COD hoặc thử lại sau.'), { statusCode: 503 });
   const { orderId, bankCode, locale = 'vn' } = req.body;
   const userId = req.user._id;
 
@@ -89,7 +100,7 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
 
   // Kiểm tra quyền sở hữu đơn hàng
   const isOwner = order.user.toString() === userId.toString();
-  const isAdmin = ['admin', 'vendor'].includes(req.user.role);
+  const isAdmin = req.user.role === 'admin';
   if (!isOwner && !isAdmin) {
     const error = new Error('Bạn không có quyền thanh toán cho đơn hàng này');
     error.statusCode = 403;
@@ -107,6 +118,14 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
     const error = new Error('Đơn hàng đã bị hủy, không thể tiếp tục thanh toán');
     error.statusCode = 400;
     throw error;
+  }
+
+  if (order.paymentMethod !== 'VNPAY' || !['pending', 'processing'].includes(order.status) ||
+    !Number.isSafeInteger(Math.round(order.finalAmount * 100)) || order.finalAmount <= 0) {
+    throw Object.assign(new Error('Đơn hàng không phù hợp để thanh toán VNPay'), { statusCode: 400 });
+  }
+  if (!['vn', 'en'].includes(locale) || (bankCode != null && (typeof bankCode !== 'string' || !/^[A-Za-z0-9_]{0,20}$/.test(bankCode)))) {
+    throw Object.assign(new Error('Ngôn ngữ hoặc mã ngân hàng không hợp lệ'), { statusCode: 400 });
   }
 
   const clientIp =
@@ -144,7 +163,7 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
   const sortedParams = sortObject(vnpParams);
   const secureHash = calculateVNPaySecureHash(vnpParams, env.VNP_HASH_SECRET);
 
-  const redirectUrl = `${env.VNP_URL}?${querystring.stringify(sortedParams, { encode: false })}&vnp_SecureHash=${secureHash}`;
+  const redirectUrl = `${env.VNP_URL}?${querystring.stringify(sortedParams, '&', '=', { encodeURIComponent: (value) => value })}&vnp_SecureHash=${secureHash}`;
 
   // Ghi nhận Audit Log
   await AuditLogService.logOrderChange({
@@ -172,7 +191,17 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
  * XỬ LÝ RETURN URL KHI KHÁCH HÀNG HOÀN TẤT THANH TOÁN TRÊN GIAO DIỆN VNPAY
  * GET /api/v1/payments/vnpay-return
  */
+// Compare the snapshot used to verify the callback before committing it.
+// A cancellation or another callback may have won since the initial read.
+const commitPayment = (order, paymentStatus, trackingEntry) => Order.findOneAndUpdate(
+  { _id: order._id, status: order.status, paymentStatus: order.paymentStatus, paymentMethod: 'VNPAY' },
+  { $set: { paymentStatus, ...(paymentStatus === 'paid' && { status: 'processing', paymentMethod: 'VNPAY' }) },
+    $push: { trackingHistory: trackingEntry } },
+  { new: true, runValidators: true }
+);
+
 const vnpayReturn = catchAsync(async (req, res) => {
+  if (!isVNPayConfigured()) throw Object.assign(new Error('VNPay chưa được cấu hình merchant'), { statusCode: 503 });
   const vnpParams = req.query;
   const isValidSignature = verifyVNPaySecureHash(vnpParams, env.VNP_HASH_SECRET);
 
@@ -181,12 +210,12 @@ const vnpayReturn = catchAsync(async (req, res) => {
     error.statusCode = 400;
     throw error;
   }
+  if (!validCallback(vnpParams)) throw Object.assign(new Error('Thông tin giao dịch VNPay không hợp lệ'), { statusCode: 400 });
 
   const orderCode = vnpParams['vnp_TxnRef'];
   const responseCode = vnpParams['vnp_ResponseCode'];
   const transactionNo = vnpParams['vnp_TransactionNo'];
   const bankCode = vnpParams['vnp_BankCode'];
-  const payDate = vnpParams['vnp_PayDate'];
   const vnpAmount = Number(vnpParams['vnp_Amount']) / 100;
 
   const order = await Order.findOne({ orderCode });
@@ -196,60 +225,24 @@ const vnpayReturn = catchAsync(async (req, res) => {
     throw error;
   }
 
-  const isSuccess = responseCode === '00';
-
-  if (isSuccess && order.paymentStatus !== 'paid') {
-    const oldStatus = order.status;
-    order.paymentStatus = 'paid';
-    order.status = 'processing';
-    order.paymentMethod = 'VNPAY';
-    order.trackingHistory.push({
-      status: 'processing',
-      note: `Thanh toán trực tuyến VNPay thành công. Mã GD: ${transactionNo}, Ngân hàng: ${bankCode}`,
-      updatedAt: new Date(),
-    });
-
-    await order.save();
-
-    // Ghi nhận Audit Log
-    await AuditLogService.logPaymentTransaction({
-      orderId: order._id,
-      transactionNo,
-      amount: vnpAmount,
-      bankCode,
-      status: 'success',
-      responseCode,
-      details: { payDate, oldStatus, newStatus: 'processing' },
-      req,
-    });
-
-    // Bắn sự kiện thời gian thực (Real-time Socket.io)
-    notifyAdmin('new_order', {
-      orderId: order._id,
-      orderCode: order.orderCode,
-      finalAmount: order.finalAmount,
-      customerName: order.shippingAddress.fullName,
-      paymentMethod: 'VNPAY',
-      paymentStatus: 'paid',
-      createdAt: order.createdAt,
-    });
-
-    notifyUser(order.user.toString(), 'payment_success', {
-      orderId: order._id,
-      orderCode: order.orderCode,
-      message: 'Đơn hàng của bạn đã thanh toán thành công qua VNPay',
-    });
-
-    notifyOrderUpdate(order._id.toString(), 'order_status_updated', {
-      orderId: order._id,
-      status: 'processing',
-      note: 'Đã thanh toán qua VNPay',
-    });
+  if (!Number.isFinite(vnpAmount) || Number(vnpParams.vnp_Amount) !== Math.round(order.finalAmount * 100)) {
+    const error = new Error('Số tiền giao dịch không khớp với đơn hàng');
+    error.statusCode = 400;
+    throw error;
   }
-
-  return ApiResponse.success(res, 200, isSuccess ? 'Thanh toán thành công' : 'Thanh toán không thành công', {
+  if (order.status === 'cancelled' || order.paymentMethod !== 'VNPAY') {
+    const error = new Error('Đơn hàng đã bị hủy, không thể xác nhận thanh toán');
+    error.statusCode = 400;
+    throw error;
+  }
+  // Return is a browser navigation. Only authenticated server-to-server IPN changes payment state.
+  const isSuccess = order.paymentStatus === 'paid';
+  const isPending = callbackSucceeded(vnpParams) && order.paymentStatus === 'unpaid';
+  return ApiResponse.success(res, 200, isSuccess ? 'Thanh toán thành công' : isPending ? 'Đang chờ xác nhận thanh toán' : 'Thanh toán không thành công', {
     orderCode,
     isSuccess,
+    isPending,
+    paymentStatus: order.paymentStatus,
     responseCode,
     transactionNo,
     bankCode,
@@ -265,6 +258,7 @@ const vnpayReturn = catchAsync(async (req, res) => {
  */
 const vnpayIpn = async (req, res) => {
   try {
+    if (!isVNPayConfigured()) return res.status(200).json({ RspCode: '99', Message: 'Merchant is not configured' });
     const vnpParams = req.query;
     const isValidSignature = verifyVNPaySecureHash(vnpParams, env.VNP_HASH_SECRET);
 
@@ -272,6 +266,7 @@ const vnpayIpn = async (req, res) => {
     if (!isValidSignature) {
       return res.status(200).json({ RspCode: '97', Message: 'Checksum failed' });
     }
+    if (!validCallback(vnpParams)) return res.status(200).json({ RspCode: '97', Message: 'Invalid callback or merchant' });
 
     const orderCode = vnpParams['vnp_TxnRef'];
     const responseCode = vnpParams['vnp_ResponseCode'];
@@ -280,7 +275,7 @@ const vnpayIpn = async (req, res) => {
     const vnpAmount = Number(vnpParams['vnp_Amount']);
 
     // 2. Kiểm tra sự tồn tại của đơn hàng
-    const order = await Order.findOne({ orderCode });
+    let order = await Order.findOne({ orderCode });
     if (!order) {
       return res.status(200).json({ RspCode: '01', Message: 'Order not found' });
     }
@@ -291,23 +286,41 @@ const vnpayIpn = async (req, res) => {
       return res.status(200).json({ RspCode: '04', Message: 'Invalid amount' });
     }
 
+    if (order.paymentMethod !== 'VNPAY') return res.status(200).json({ RspCode: '02', Message: 'Order is not payable with VNPay' });
+
+    if (order.status === 'cancelled') {
+      return res.status(200).json({ RspCode: '02', Message: 'Order already cancelled' });
+    }
+
     // 4. Kiểm tra tính Idempotent: Đơn hàng đã được xác nhận thanh toán trước đó chưa
-    if (order.paymentStatus === 'paid') {
+    if (['paid', 'refunded'].includes(order.paymentStatus)) {
       return res.status(200).json({ RspCode: '02', Message: 'Order already confirmed' });
     }
 
-    // 5. Cập nhật trạng thái đơn hàng
-    if (responseCode === '00') {
-      order.paymentStatus = 'paid';
-      order.status = 'processing';
-      order.paymentMethod = 'VNPAY';
-      order.trackingHistory.push({
-        status: 'processing',
-        note: `VNPay IPN xác nhận thanh toán thành công. Mã GD: ${transactionNo}`,
-        updatedAt: new Date(),
-      });
-      await order.save();
-
+    if (!['pending', 'processing'].includes(order.status)) return res.status(200).json({ RspCode: '02', Message: 'Order is not awaiting payment' });
+    const isSuccess = callbackSucceeded(vnpParams);
+    if (!isSuccess && order.paymentStatus === 'failed') {
+      return res.status(200).json({ RspCode: '02', Message: 'Order already confirmed' });
+    }
+    const committed = await commitPayment(order, isSuccess ? 'paid' : 'failed', {
+      status: isSuccess ? 'processing' : order.status,
+      note: isSuccess
+        ? `VNPay IPN xác nhận thanh toán thành công. Mã GD: ${transactionNo}`
+        : `VNPay IPN thông báo giao dịch thất bại. Mã lỗi: ${responseCode}`,
+      updatedAt: new Date(),
+    });
+    if (!committed) {
+      const current = await Order.findById(order._id);
+      if (current?.status === 'cancelled') {
+        return res.status(200).json({ RspCode: '02', Message: 'Order already cancelled' });
+      }
+      if (current?.paymentStatus === 'paid' || (!isSuccess && current?.paymentStatus === 'failed')) {
+        return res.status(200).json({ RspCode: '02', Message: 'Order already confirmed' });
+      }
+      return res.status(200).json({ RspCode: '99', Message: 'Order changed; retry callback' });
+    }
+    order = committed;
+    if (isSuccess) {
       // Ghi Audit Log
       await AuditLogService.logPaymentTransaction({
         orderId: order._id,
@@ -329,6 +342,7 @@ const vnpayIpn = async (req, res) => {
         paymentStatus: 'paid',
         paymentMethod: 'VNPAY',
       });
+      notifyOrderVendors(getIo(), order, 'new_order');
       notifyUser(order.user.toString(), 'payment_success', {
         orderId: order._id,
         orderCode: order.orderCode,
@@ -338,14 +352,6 @@ const vnpayIpn = async (req, res) => {
         status: 'processing',
       });
     } else {
-      order.paymentStatus = 'failed';
-      order.trackingHistory.push({
-        status: order.status,
-        note: `VNPay IPN thông báo giao dịch thất bại. Mã lỗi: ${responseCode}`,
-        updatedAt: new Date(),
-      });
-      await order.save();
-
       await AuditLogService.logPaymentTransaction({
         orderId: order._id,
         transactionNo,
@@ -372,6 +378,9 @@ const vnpayIpn = async (req, res) => {
  */
 const getOrderAuditLogs = catchAsync(async (req, res) => {
   const { orderId } = req.params;
+  const order = await Order.findById(orderId);
+  if (!order) throw Object.assign(new Error('Không tìm thấy đơn hàng'), { statusCode: 404 });
+  if (!canManageWholeOrder(order, req.user)) throw Object.assign(new Error('Bạn không có quyền xem audit log của đơn hàng này'), { statusCode: 403 });
   const logs = await AuditLogService.getOrderAuditLogs(orderId);
   return ApiResponse.success(res, 200, 'Lấy lịch sử kiểm toán đơn hàng thành công', logs);
 });

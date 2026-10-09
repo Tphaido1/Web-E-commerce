@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import api from '../../services/api.js';
+import { getAuthSession } from '../../services/authSession.js';
 import './ProductReviews.css';
 
 export const ProductReviews = ({ productId, productName }) => {
   const [reviews, setReviews] = useState([]);
   const [summary, setSummary] = useState({
-    averageRating: 5.0,
+    averageRating: 0,
     totalReviews: 0,
     starsBreakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
   });
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   // Form states
   const [userRating, setUserRating] = useState(5);
@@ -16,35 +19,42 @@ export const ProductReviews = ({ productId, productName }) => {
   const [submitting, setSubmitting] = useState(false);
   const [alert, setAlert] = useState(null); // { type: 'success' | 'error', message: string }
 
-  const fetchReviews = useCallback(async () => {
+  const fetchReviews = useCallback(async (signal) => {
     if (!productId) return;
     setLoading(true);
+    setLoadError('');
     try {
-      const res = await fetch(`/api/v1/reviews/product/${productId}?page=1&limit=10`);
-      if (res.ok) {
-        const json = await res.json();
-        setReviews(json.data.reviews || []);
-        if (json.data.summary) {
-          setSummary(json.data.summary);
-        }
-      }
+      const response = await api.get(`/reviews/product/${productId}`, {
+        params: { page: 1, limit: 10 },
+        signal,
+      });
+      const data = response.data?.data;
+      setReviews(data?.reviews || []);
+      setSummary(data?.summary || {
+        averageRating: 0,
+        totalReviews: 0,
+        starsBreakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+      });
     } catch (err) {
-      console.warn('Lỗi khi tải đánh giá sản phẩm:', err);
+      if (err.name !== 'CanceledError') {
+        setLoadError(err.response?.data?.message || 'Không thể tải đánh giá. Vui lòng thử lại.');
+      }
     } finally {
       setLoading(false);
     }
   }, [productId]);
 
   useEffect(() => {
-    fetchReviews();
+    const controller = new AbortController();
+    fetchReviews(controller.signal);
+    return () => controller.abort();
   }, [fetchReviews]);
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     setAlert(null);
 
-    const token = localStorage.getItem('token');
-    if (!token) {
+    if (!getAuthSession()?.accessToken) {
       setAlert({
         type: 'error',
         message: 'Vui lòng đăng nhập để gửi đánh giá sản phẩm.',
@@ -62,41 +72,24 @@ export const ProductReviews = ({ productId, productName }) => {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/v1/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          productId,
-          rating: userRating,
-          comment: comment.trim(),
-        }),
+      await api.post('/reviews', {
+        productId,
+        rating: userRating,
+        comment: comment.trim(),
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setAlert({
-          type: 'success',
-          message: 'Cảm ơn bạn! Đánh giá của bạn đã được ghi nhận và hiển thị.',
-        });
-        setComment('');
-        setUserRating(5);
-        fetchReviews();
-      } else {
-        setAlert({
-          type: 'error',
-          message:
-            data.message ||
-            'Chỉ khách hàng đã từng mua và nhận sản phẩm này mới có thể đánh giá.',
-        });
-      }
-    } catch {
+      setAlert({
+        type: 'success',
+        message: 'Cảm ơn bạn! Đánh giá của bạn đã được ghi nhận và hiển thị.',
+      });
+      setComment('');
+      setUserRating(5);
+      fetchReviews();
+    } catch (error) {
       setAlert({
         type: 'error',
-        message: 'Lỗi kết nối máy chủ. Vui lòng thử lại sau.',
+        message: error.response?.data?.message
+          || 'Lỗi kết nối máy chủ. Vui lòng thử lại sau.',
       });
     } finally {
       setSubmitting(false);
@@ -160,7 +153,8 @@ export const ProductReviews = ({ productId, productName }) => {
       {/* DANH SÁCH CÁC BÌNH LUẬN ĐÃ DUYỆT */}
       <div className="reviews-list">
         {loading && <p style={{ color: '#6b7280' }}>Đang tải danh sách đánh giá...</p>}
-        {!loading && reviews.length === 0 && (
+        {loadError && <div className="review-alert review-alert-error" role="alert">{loadError}<button type="button" onClick={() => fetchReviews()}>Thử lại</button></div>}
+        {!loading && !loadError && reviews.length === 0 && (
           <p style={{ color: '#6b7280', fontStyle: 'italic' }}>
             Chưa có đánh giá nào cho sản phẩm này. Hãy là người đầu tiên mua và đánh giá!
           </p>

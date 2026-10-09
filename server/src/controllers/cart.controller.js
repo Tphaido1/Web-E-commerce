@@ -1,8 +1,8 @@
 const Cart = require('../models/Cart.model');
-const Product = require('../models/Product.model');
 const Inventory = require('../models/Inventory.model');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
+const { parseQuantity, resolveCartItem } = require('../utils/cartItem.util');
 
 /**
  * Lấy giỏ hàng của người dùng hiện tại
@@ -25,45 +25,9 @@ const getCart = catchAsync(async (req, res) => {
  */
 const addToCart = catchAsync(async (req, res) => {
   const userId = req.user._id;
-  const { productId, sku, quantity = 1 } = req.body;
-
-  if (!productId || !sku) {
-    const error = new Error('Vui lòng cung cấp productId và sku');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const requestedQty = Math.max(1, parseInt(quantity, 10) || 1);
-
-  // 1. Kiểm tra sản phẩm tồn tại
-  const product = await Product.findById(productId);
-  if (!product || !product.isActive) {
-    const error = new Error('Sản phẩm không tồn tại hoặc đã ngừng kinh doanh');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  // 2. Xác định biến thể và giá
-  const targetSku = sku.toUpperCase().trim();
-  let itemPrice = product.salePrice || product.price;
-  let variantId = null;
-
-  if (Array.isArray(product.variants) && product.variants.length > 0) {
-    const matchedVariant = product.variants.find((v) => v.sku.toUpperCase() === targetSku);
-    if (matchedVariant) {
-      itemPrice = matchedVariant.price;
-      variantId = matchedVariant._id;
-    }
-  }
-
-  // 3. Kiểm tra tồn kho khả dụng
-  const inventory = await Inventory.findOne({ sku: targetSku });
-  if (!inventory || inventory.stock < requestedQty) {
-    const available = inventory ? inventory.stock : 0;
-    const error = new Error(`Sản phẩm không đủ tồn kho (chỉ còn ${available} sản phẩm khả dụng)`);
-    error.statusCode = 400;
-    throw error;
-  }
+  const { item: resolvedItem, inventory } = await resolveCartItem(req.body);
+  const targetSku = resolvedItem.sku;
+  const requestedQty = resolvedItem.quantity;
 
   // 4. Cập nhật hoặc tạo giỏ hàng
   let cart = await Cart.findOne({ user: userId });
@@ -76,21 +40,13 @@ const addToCart = catchAsync(async (req, res) => {
   if (existingItemIndex > -1) {
     const newTotalQty = cart.items[existingItemIndex].quantity + requestedQty;
     if (inventory.stock < newTotalQty) {
-      const error = new Error(`Tổng số lượng trong giỏ (${newTotalQty}) vượt quá tồn kho khả dụng (${inventory.stock})`);
+      const error = new Error(`Tổng số lượng trong giỏ (${newTotalQty}) vượt quá tồn kho khả dụng (${inventory?.stock ?? 0})`);
       error.statusCode = 400;
       throw error;
     }
-    cart.items[existingItemIndex].quantity = newTotalQty;
+    Object.assign(cart.items[existingItemIndex], resolvedItem, { quantity: newTotalQty });
   } else {
-    cart.items.push({
-      product: product._id,
-      sku: targetSku,
-      variantId,
-      name: product.name,
-      price: itemPrice,
-      quantity: requestedQty,
-      image: product.images && product.images.length > 0 ? product.images[0] : null,
-    });
+    cart.items.push(resolvedItem);
   }
 
   await cart.save();
@@ -121,14 +77,14 @@ const updateCartItemQuantity = catchAsync(async (req, res) => {
     throw error;
   }
 
-  const newQty = parseInt(quantity, 10);
+  const newQty = parseQuantity(quantity, true);
   if (newQty <= 0) {
     cart.items.pull(itemId);
   } else {
     // Kiểm tra tồn kho
     const inventory = await Inventory.findOne({ sku: item.sku.toUpperCase() });
-    if (inventory && inventory.stock < newQty) {
-      const error = new Error(`Số lượng yêu cầu (${newQty}) vượt quá tồn kho còn lại (${inventory.stock})`);
+    if (!inventory || String(inventory.product) !== String(item.product) || inventory.stock < newQty) {
+      const error = new Error(`Số lượng yêu cầu (${newQty}) vượt quá tồn kho còn lại (${inventory?.stock ?? 0})`);
       error.statusCode = 400;
       throw error;
     }

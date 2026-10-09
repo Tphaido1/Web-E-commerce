@@ -20,6 +20,7 @@ jest.mock('../src/models/Inventory.model');
 jest.mock('../src/models/Cart.model');
 jest.mock('../src/models/Coupon.model');
 jest.mock('../src/services/email.service');
+jest.mock('../src/utils/cancellationTransaction.util', () => ({ runCancellationTransaction: (work) => work({}) }));
 
 describe('Order Controller & Checkout Fail-Safe Engine (Level 4/5 Verification Ladder)', () => {
   let req, res, next;
@@ -29,6 +30,7 @@ describe('Order Controller & Checkout Fail-Safe Engine (Level 4/5 Verification L
 
   beforeEach(() => {
     jest.clearAllMocks();
+    Inventory.findOne.mockImplementation(async ({ sku }) => ({ sku, product: sku === 'SKU-CASE' ? mockProductId2 : mockProductId1, stock: sku === 'SKU-CASE' ? 0 : 10 }));
     req = {
       user: {
         _id: mockUserId,
@@ -55,6 +57,7 @@ describe('Order Controller & Checkout Fail-Safe Engine (Level 4/5 Verification L
       req.headers['idempotency-key'] = 'IDEMPOTENT-UUID-12345';
       const mockExistingOrder = {
         _id: 'order_123',
+        user: mockUserId,
         orderCode: 'ORD-20260926-EXIST',
         finalAmount: 300000,
         status: 'pending',
@@ -139,7 +142,7 @@ describe('Order Controller & Checkout Fail-Safe Engine (Level 4/5 Verification L
       Inventory.deductStock.mockResolvedValueOnce({ sku: 'SKU-PHONE', stock: 9 });
       // Món 2: trừ kho thất bại (hết hàng)
       Inventory.deductStock.mockResolvedValueOnce(null);
-      Inventory.findOne.mockResolvedValueOnce({ sku: 'SKU-CASE', stock: 0 }); // Kho chỉ còn 0 cái
+      // Inventory.findOne fixture has SKU-CASE bound to product2 with zero stock.
       Inventory.compensateStock.mockResolvedValue({ sku: 'SKU-PHONE', stock: 10 });
       Product.updateOne.mockResolvedValue({});
 
@@ -190,6 +193,7 @@ describe('Order Controller & Checkout Fail-Safe Engine (Level 4/5 Verification L
         validateForOrder: jest.fn().mockReturnValue({ isValid: true }),
         calculateDiscount: jest.fn().mockReturnValue(120000), // 20% của 600k = 120k
         usageLimit: 100,
+        userLimit: 1,
         usageCount: 10,
       };
       Coupon.findOne.mockResolvedValue(mockCouponDoc);
@@ -321,6 +325,11 @@ describe('Order Controller & Checkout Fail-Safe Engine (Level 4/5 Verification L
         save: jest.fn().mockResolvedValue(true),
       };
       Order.findById.mockResolvedValue(mockOrder);
+      Order.findOneAndUpdate.mockImplementation(async (_filter, update) => {
+        Object.assign(mockOrder, update.$set);
+        mockOrder.trackingHistory.push(update.$push.trackingHistory);
+        return mockOrder;
+      });
       Inventory.compensateStock.mockResolvedValue({});
       Product.updateOne.mockResolvedValue({});
       Coupon.updateOne.mockResolvedValue({});
@@ -330,14 +339,20 @@ describe('Order Controller & Checkout Fail-Safe Engine (Level 4/5 Verification L
       expect(mockOrder.status).toBe('cancelled');
       expect(mockOrder.cancelledReason).toBe('Khách đổi ý');
       // Đảm bảo kho được hoàn trả tự động cho cả 2 sản phẩm!
-      expect(Inventory.compensateStock).toHaveBeenCalledWith('SKU-A', 2);
-      expect(Inventory.compensateStock).toHaveBeenCalledWith('SKU-B', 3);
+      expect(Inventory.compensateStock).toHaveBeenCalledWith('SKU-A', 2, expect.any(Object));
+      expect(Inventory.compensateStock).toHaveBeenCalledWith('SKU-B', 3, expect.any(Object));
       // Đảm bảo lượt dùng coupon được hoàn lại
       expect(Coupon.updateOne).toHaveBeenCalledWith(
-        { _id: mockOrder.coupon.couponId },
-        { $inc: { usageCount: -1 }, $pull: { usedBy: { orderId: mockOrder._id } } }
+        { _id: mockOrder.coupon.couponId, 'usedBy.orderId': mockOrder._id, usageCount: { $gt: 0 } },
+        { $inc: { usageCount: -1 }, $pull: { usedBy: { orderId: mockOrder._id } } },
+        { session: expect.any(Object) }
       );
-      expect(mockOrder.save).toHaveBeenCalled();
+      expect(Order.findOneAndUpdate).toHaveBeenCalledWith(
+        { _id: mockOrder._id, status: 'pending' },
+        expect.objectContaining({ $set: expect.objectContaining({ status: 'cancelled' }) }),
+        { new: true, runValidators: true, session: expect.any(Object) }
+      );
+      expect(mockOrder.save).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });

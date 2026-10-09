@@ -10,25 +10,36 @@
 const mongoose = require('mongoose');
 const env = require('./env');
 
+let connectionPromise;
+let listenersAttached = false;
+
 const connectDB = async () => {
   // Tái sử dụng kết nối hiện có nếu đã kết nối (tối ưu cho Vercel Serverless & container)
-  if (mongoose.connection.readyState >= 1) {
+  if (mongoose.connection.readyState === 1) {
     return mongoose.connection;
   }
 
+  // Concurrent cold-start requests must all await the same connection attempt.
+  // readyState=2 means connecting and readyState=3 means disconnecting.
+  if (connectionPromise) return connectionPromise;
+
   try {
-    const conn = await mongoose.connect(env.MONGO_URI);
+    connectionPromise = mongoose.connect(env.MONGO_URI);
+    const conn = await connectionPromise;
 
     console.log(`✅ MongoDB đã kết nối thành công: ${conn.connection.host}`);
 
     // Lắng nghe các sự kiện quan trọng của kết nối để debug dễ dàng hơn
-    mongoose.connection.on('disconnected', () => {
-      console.warn('⚠️  MongoDB đã ngắt kết nối.');
-    });
+    if (!listenersAttached) {
+      mongoose.connection.on('disconnected', () => {
+        console.warn('⚠️  MongoDB đã ngắt kết nối.');
+      });
 
-    mongoose.connection.on('error', (err) => {
-      console.error(`❌ Lỗi kết nối MongoDB: ${err.message}`);
-    });
+      mongoose.connection.on('error', (err) => {
+        console.error(`❌ Lỗi kết nối MongoDB: ${err.message}`);
+      });
+      listenersAttached = true;
+    }
 
     return conn;
   } catch (error) {
@@ -38,6 +49,8 @@ const connectDB = async () => {
       process.exit(1);
     }
     throw error;
+  } finally {
+    connectionPromise = undefined;
   }
 };
 

@@ -1,4 +1,4 @@
-# E-Commerce System — Monorepo (Tuần 1 Boilerplate)
+# E-Commerce System — MVC Monorepo
 
 Dự án Web E-Commerce gồm 3 ứng dụng độc lập trong cùng 1 Monorepo:
 
@@ -11,7 +11,7 @@ Dự án Web E-Commerce gồm 3 ứng dụng độc lập trong cùng 1 Monorepo
 ## 📁 Cấu trúc thư mục
 
 ```
-ecommerce-system/
+web/
 ├── server/
 │   ├── src/
 │   │   ├── config/         # Cấu hình (db.js, env.js)
@@ -67,6 +67,10 @@ npm start
 Sau khi chạy thành công, API sẽ sẵn sàng tại: `http://localhost:5000/api/v1`
 Kiểm tra nhanh: `GET http://localhost:5000/api/v1/healthcheck`
 
+Hủy đơn cập nhật trạng thái, hoàn kho và trả lượt coupon trong một MongoDB transaction. Luồng này cần replica set (có thể là replica set một node ở local) hoặc sharded cluster hỗ trợ transaction; cập nhật `MONGO_URI` theo deployment của bạn. MongoDB standalone vẫn chạy các API khác, nhưng API hủy đơn trả HTTP 503 trước mọi thay đổi. Nếu một thao tác hoàn trả thất bại, transaction rollback và đơn giữ trạng thái cũ để có thể thử lại. Không có migration hoặc thay đổi deployment tự động.
+
+Tra cứu đơn hàng công khai chỉ trả thông tin người nhận đã che, trạng thái giao hàng và thời điểm cập nhật. Chi tiết đơn và thanh toán cần liên kết HMAC hợp lệ với `HMAC_SECRET` riêng. Hủy đơn thiếu tài nguyên kho đã ghi nhận trả HTTP 409; hủy lại đơn đã hủy trả HTTP 400.
+
 ### 2️⃣ Frontend Storefront — `client-storefront/`
 
 ```bash
@@ -78,16 +82,99 @@ npm run dev
 
 Truy cập: `http://localhost:5173`
 
+#### Cấu hình, kiểm tra và triển khai Storefront
+
+`client-storefront/.env.example` liệt kê biến frontend:
+
+| Biến | Mặc định | Mục đích |
+|---|---|---|
+| `VITE_API_BASE_URL` | `http://localhost:5000/api/v1` | URL REST API đầy đủ, gồm tiền tố `/api/v1`. Khi triển khai, đặt thành URL HTTPS của backend. |
+
+Tạo `.env.local` từ file mẫu khi cần ghi đè mặc định. Vite đóng gói giá trị `VITE_*` vào JavaScript công khai; không đặt secret, khóa ký hay thông tin đăng nhập trong các biến này. Khi dùng API khác origin, cấu hình backend cho phép CORS từ origin storefront đã triển khai. Không dùng URL tương đối `/api/v1` trừ khi đã cấu hình reverse proxy riêng; cấu hình Vercel bên dưới chỉ xử lý SPA routes, không proxy API.
+
+```bash
+cd client-storefront
+npm ci
+npm run lint
+npm run build
+npm run preview
+```
+
+Build local tạo `client-storefront/dist/`, phục vụ preview và regression. Khi deploy Vercel, đặt **Root Directory** thành `client-storefront`, build `npm run build:deploy`, output `dist`; cấu hình Vercel/Netlify trong thư mục client xử lý SPA fallback. Lệnh deploy kiểm tra `VITE_API_BASE_URL` phải là backend HTTPS công khai, không phải localhost hoặc địa chỉ mẫu. Kiểm tra cú pháp URL không chứng minh backend hoạt động; phải smoke-test URL thật sau deploy. Triển khai cần HTTPS cho Service Worker. Đặt biến frontend tại hosting rồi build lại sau khi đổi giá trị.
+
+Backend phải cấu hình `VNP_RETURN_URL` thành URL HTTPS của storefront, kết thúc bằng `/checkout/payment-result`, và `CLIENT_URL`/`ADMIN_URL` đúng các origin triển khai cho CORS và Socket.io. Đăng ký IPN backend `/api/v1/payments/vnpay-ipn` tại cổng merchant. Chỉ IPN xác minh chữ ký, merchant, số tiền và trạng thái giao dịch mới cập nhật thanh toán; Return chỉ đọc trạng thái. `VNP_TMN_CODE`/`VNP_HASH_SECRET` là secrets backend, cần credentials merchant thật; để trống sẽ vô hiệu hóa VNPay trong khi COD vẫn dùng được. Không dùng khóa demo công khai.
+
+#### Hướng dẫn regression Storefront
+
+- Build và lint: `npm run build` và `npm run lint` trong `client-storefront/`.
+- Kiểm tra SPA fallback bằng cách mở trực tiếp `/products/:id`, `/checkout/payment-result`, `/my-orders`, `/orders/:id` và `/track-order`.
+- Kiểm tra quy trình API với backend và tài khoản test đang chạy: đăng nhập/đăng xuất, tìm kiếm và bộ lọc, chọn biến thể, cart, coupon, COD checkout, lịch sử/chi tiết đơn và tracking. Chỉ xác nhận success sau response từ backend.
+- Kiểm tra PWA trên HTTPS (hoặc localhost): cài Service Worker, mở lại app shell khi offline, xác minh sản phẩm đã cache được đánh dấu dữ liệu có thể cũ; thử cart sync khi online trở lại và xác nhận lỗi/stock conflict không xóa công việc đang chờ.
+- Kiểm tra layout/overflow và thao tác bàn phím trên viewport 320, 390, 768, 1024 và 1440 px. Đây là viewport giả lập trong trình duyệt, không thay cho kiểm tra thiết bị thật.
+- Backend, database, tài khoản test, VNPay callback/IPN và thiết bị thật cần có sẵn để xác nhận các luồng tích hợp; build hoặc browser preview đơn lẻ không xác nhận được các luồng này.
+
 ### 3️⃣ Frontend Admin — `client-admin/`
 
 ```bash
 cd client-admin
 
+# Optional: copy .env.example to .env.local and set the backend URL.
 npm install
 npm run dev
 ```
 
 Truy cập: `http://localhost:5174`
+
+#### Cấu hình Admin/Vendor
+
+`client-admin/.env.example` liệt kê các biến Vite cần thiết:
+
+| Biến | Mặc định | Mục đích |
+|---|---|---|
+| `VITE_API_BASE_URL` | `http://localhost:5000/api/v1` | REST API base URL, bao gồm tiền tố phiên bản. |
+| `VITE_SOCKET_URL` | Origin của `VITE_API_BASE_URL` | Socket.io server origin; đặt riêng nếu realtime server dùng origin khác. |
+
+Vite nhúng các biến `VITE_*` vào bundle khi build. Không đặt secrets trong các biến này. Sau khi thay đổi biến, cần build lại frontend.
+
+#### Build và triển khai SPA
+
+```bash
+cd client-admin
+npm ci
+npm run lint
+npm run build
+```
+
+Build local tạo `client-admin/dist/`. Vercel/Netlify đã có cấu hình SPA fallback cho `/dashboard`, `/products/*`, `/inventory`, `/users`, `/categories`, `/orders` và `/reviews`, dùng `npm run build:deploy` để chặn endpoint thiếu/localhost trước khi publish. Cấu hình `VITE_API_BASE_URL`, tùy chọn `VITE_SOCKET_URL`, và backend CORS/Socket.io theo origin triển khai. Có thể chạy `npm run check:deploy` để kiểm tra cấu hình trước khi build. Sau triển khai, kiểm tra HTTPS, tải lại đường dẫn trực tiếp, đăng nhập Admin/Vendor, restock, bộ lọc analytics và thông báo đơn mới.
+
+#### Chức năng Admin/Vendor
+
+- **B01 Authentication**: login/session, refresh, role guard và logout đã triển khai; tài khoản vô hiệu hóa bị chặn, thay đổi role/access thu hồi refresh và ngắt socket.
+- **B02 Categories**: CRUD dùng API thật; chỉ Admin ghi, Vendor đọc.
+- **B03 Products/variants**: Admin chọn Vendor; Vendor chỉ quản lý sản phẩm thuộc mình qua `/products/managed`. Catalog hydrate tồn kho từ Inventory; sửa metadata giữ nguyên tồn kho SKU hiện có. Tồn kho ban đầu chỉ nhập lúc tạo sản phẩm/biến thể mới; dùng Inventory để restock. SKU có đơn chưa kết thúc không được đổi/xóa.
+- **B04 Product image upload**: chưa hoàn tất; backend hiện không expose upload endpoint.
+- **B05 Orders**: list/filter/pagination/detail/status dùng API; Vendor chỉ nhận dòng đơn thuộc mình và tổng tiền tương ứng. Đơn nhiều Vendor chỉ Admin đổi trạng thái toàn đơn; cần mô hình fulfillment riêng nếu muốn mỗi Vendor cập nhật độc lập.
+- **B06 Inventory/Users**: Inventory có tìm SKU/sản phẩm, lọc tồn thấp/hết hàng, restock nguyên tử và ngưỡng cảnh báo. Users dành riêng Admin, lọc/tìm kiếm/xem và thay đổi role/access; không trả password/refresh token. Dữ liệu cũ chưa gán Vendor thuộc phạm vi Admin; không tự migrate hoặc đoán ownership.
+- **B07 Review moderation**: frontend đọc/filter cho admin/vendor; chỉ admin có quyền moderation theo backend.
+- **B08 Realtime orders**: Admin và Vendor nhận `new_order`; server xác định Vendor từ snapshot dòng đơn, payload Vendor chỉ có số liệu thuộc mình. Client cleanup listener và chống thông báo trùng theo phiên.
+- **B09 Analytics**: API tổng hợp thực có khoảng ngày theo UTC+07:00, thẻ thống kê, biểu đồ cột doanh thu và tròn trạng thái. Doanh thu là giá trị hàng sau phân bổ giảm giá, không gồm shipping; đơn paid không hủy hoặc COD delivered chưa thu online được ghi nhận theo ngày tạo đơn.
+
+#### API quản lý Admin/Vendor
+
+Các đường dẫn dưới đây dùng tiền tố `/api/v1` và yêu cầu xác thực. Inventory, analytics và danh sách sản phẩm quản lý dành cho Admin/Vendor; quản lý người dùng dành riêng Admin.
+
+| Endpoint | Tham số hoặc nội dung request |
+|---|---|
+| `GET /inventory` | `search`, `stockStatus=all\|low\|out`, `page`, `limit` |
+| `POST /inventory/:id/restock` | `{ quantity }`, số nguyên dương |
+| `PATCH /inventory/:id/threshold` | `{ lowStockThreshold }`, số nguyên không âm |
+| `GET /products/managed` | Bộ lọc và phân trang sản phẩm, giới hạn theo Vendor sở hữu |
+| `GET /users` | `search`, `role`, `active`, `page`, `limit` |
+| `GET /users/:id` | Thông tin tài khoản, không có password hoặc refresh token |
+| `PATCH /users/:id` | `{ role?, isActive? }`; không cho tự hạ quyền hoặc khóa mình |
+| `GET /analytics` | `from`, `to` theo `YYYY-MM-DD`, tối đa 366 ngày |
+
+Sản phẩm cũ chưa gán Vendor và đơn cũ chưa có snapshot Vendor thuộc phạm vi quản lý Admin. Thay đổi Vendor của sản phẩm không chuyển quyền sở hữu đơn cũ. Thay đổi role/access thu hồi refresh token và ngắt socket hiện tại. Thông báo realtime Vendor chỉ chứa các dòng đơn và số tiền thuộc Vendor đó; socket hết hạn access token sẽ ngắt kết nối.
 
 ## 🧪 Test API với Postman
 
@@ -166,19 +253,18 @@ Authorization: Bearer <access-jwt>
 ```
 
 Response `200`:
-## 📌 Trạng thái Tuần 2-3 (Đã hoàn tất 100%)
 
-- **Auth Core**: Hoàn tất ở backend (`User.model.js`, `auth.controller.js`, `auth.middleware.js`) với JWT + bcrypt thật.
-- **Product Module (CRUD)**: Đã hoàn tất (`Product.model.js`, `product.controller.js`, `product.routes.js`) hỗ trợ lọc theo danh mục, khoảng giá, sắp xếp, tìm kiếm text index và phân trang.
-- **Category Module**: Đã hoàn tất (`Category.model.js`, `category.controller.js`, `category.routes.js`) hỗ trợ CRUD danh mục độc lập và tự động sinh slug tiếng Việt chuẩn.
-- **Cart Module Online**: Đã hoàn tất (`Cart.model.js`, `cart.controller.js`, `cart.routes.js`) với API lấy giỏ hàng, thêm sản phẩm, cập nhật số lượng có kiểm tra tồn kho, xóa sản phẩm và xóa giỏ.
-- **Database Seeder**: Lệnh `npm run seed` (`server/scripts/seed.js`) khởi tạo tự động toàn bộ Users, Categories, Products, Inventories và Coupons vào MongoDB.
+```json
+{
+	"status": "success",
+	"message": "Đăng xuất thành công",
+	"data": null
+}
+```
 
----
+## Chức năng hệ thống
 
-## 🚀 Nhật Ký Cập Nhật Tính Năng (Tuần 1 — Tuần 6)
-
-### 🛍️ 0. Tuần 2 — Tuần 3: Danh Mục (Category), Sản Phẩm (Product CRUD) & Giỏ Hàng Trực Tuyến (Cart Engine)
+### Danh mục, sản phẩm và giỏ hàng
 
 - **Quản Lý Sản Phẩm & Biến Thể**:
   - `GET /api/v1/products`: Lấy danh sách sản phẩm, phân trang tự động (`page`, `limit`), lọc theo `category`, `minPrice`, `maxPrice`, tìm kiếm `search` và sắp xếp (`price_asc`, `price_desc`, `rating`).
@@ -197,7 +283,7 @@ Response `200`:
 
 ---
 
-### 📦 1. Tuần 4: Đặt Hàng (Checkout Saga), Giảm Giá (Coupon) & Hóa Đơn QR HMAC
+### Đặt hàng, mã giảm giá và hóa đơn QR HMAC
 
 - **Luồng Đặt Hàng Atomic & Bồi Hoàn (Saga Rollback)**:
   - Khởi tạo đơn hàng `POST /api/v1/orders/checkout` (hỗ trợ COD và VNPay).
@@ -217,7 +303,7 @@ Response `200`:
 
 ---
 
-### 💳 2. Tuần 5: Cổng Thanh Toán VNPay, Socket.io Realtime & Audit Log
+### Thanh toán VNPay, Socket.io và audit log
 
 - **Tích Hợp Cổng Thanh Toán Trực Tuyến VNPay (Sandbox)**:
   - `POST /api/v1/payments/create-vnpay-url`: Sinh URL chuyển hướng sang cổng VNPay với thuật toán ký số **HMAC-SHA512**.
@@ -237,7 +323,7 @@ Response `200`:
 
 ---
 
-### ⚡ 3. Tuần 6: High-Concurrency Flash Sale, PWA Offline Sync & Đánh Giá Sản Phẩm
+### Kiểm thử tải, PWA offline và đánh giá sản phẩm
 
 - **Chống Race-Condition Flash Sale & Bộ Công Cụ Stress Test**:
   - Đảm bảo tính bất biến: Tồn kho không bao giờ bị âm ngay cả khi hàng trăm request gửi đến cùng lúc.
@@ -246,10 +332,12 @@ Response `200`:
   - Bộ test tương tranh Jest `server/tests/concurrency.test.js`: Kiểm thử 50 request song song, kiểm thử chống sửa giá (anti-tampering), kiểm thử chạy đua áp mã giảm giá 1 lần (concurrent coupon spam).
 - **PWA Offline Support (Storefront)**:
   - Web App Manifest: `client-storefront/public/manifest.json`.
-  - Service Worker: `client-storefront/public/service-worker.js` (Cache-First cho tài nguyên tĩnh, Network-First fallback Cache cho API danh mục / sản phẩm).
-  - IndexedDB Store: `client-storefront/src/services/offlineDb.js` quản lý cache sản phẩm, giỏ hàng ngoại tuyến và hàng đợi đơn hàng ngoại tuyến (`offlineOrdersQueue`).
-  - Offline Alert UI: Component `OfflineBanner.jsx` hiển thị trạng thái mất mạng và tự động kích hoạt đồng bộ khi có kết nối trở lại.
-  - Hàng đợi đồng bộ Backend: `POST /api/v1/sync/offline-orders` (chống trùng lặp qua `clientOrderId`) và `POST /api/v1/sync/offline-cart`.
+  - Service Worker `storefront-pwa-shell-v3`: precaches the app shell and hashed build assets, uses network-first navigation with an offline shell fallback, caches only public GET product APIs without an Authorization header, and limits other runtime caching to static assets. Old storefront PWA caches are removed when the new worker activates.
+  - The manifest references the storefront SVG icons in `client-storefront/public/icons/`.
+  - IndexedDB v3 stores public product list/detail snapshots and per-guest/per-account cart snapshots. Cached product content is labeled as potentially stale; queued cart edits are reconciled with the server before being cleared.
+  - External product images are cached separately with a 100-image cap. Offline Alert UI: `OfflineBanner.jsx` reports connectivity and resumes supported cart/order synchronization when online; checkout itself remains online-only.
+  - Hàng đợi đồng bộ Backend: `POST /api/v1/sync/offline-orders` (chống trùng lặp qua `clientOrderId`) và `POST /api/v1/sync/offline-cart` (protected, merges quantities by SKU).
+  - Storefront mobile controls provide keyboard-visible focus, Escape-dismissable dialogs with focus trapping/restoration, and larger touch targets for navigation, filters, and cart actions.
 - **Hệ Thống Đánh Giá & Phản Hồi (Reviews & Ratings)**:
   - Schema `Review.model.js`: Đánh giá 1-5 sao, nhận xét, cờ `isVerifiedPurchase`, trạng thái `pending`, `approved`, `rejected`.
   - Ràng buộc Mua hàng thực tế (**Verified Purchase Constraint**): Chặn người chưa mua hoặc đơn chưa hoàn thành bằng HTTP 403.
@@ -259,7 +347,7 @@ Response `200`:
 
 ---
 
-### 🛡️ 4. Tuần 7: Tăng Cường Bảo Mật, Kiểm Toán Security Audit & Giới Hạn Tần Suất (Rate Limiting)
+### Bảo mật và giới hạn tần suất
 
 - **Bộ Lọc Giới Hạn Tần Suất (Rate Limiting Engine — `rateLimiter.js`)**:
   - `apiRateLimiter`: Giới hạn toàn sàn cho API endpoints (mặc định 300 request / 15 phút), chống DDoS và thu thập dữ liệu (scraping).
@@ -286,32 +374,37 @@ Response `200`:
 
 ---
 
-### 🧪 Danh Sách Test Suites Đã Được Xác Minh (Jest 13/13 Suites, 98/98 Tests Passed)
+## Kiểm tra mã nguồn
+
+Chạy kiểm thử và lint trong từng ứng dụng:
 
 ```bash
 cd server
 npm test
+npm run lint
 ```
 
-1. `tests/security.test.js` (15 tests) — Helmet headers, Rate limiting (RFC headers & 429), NoSQL injection defense, XSS cleaning, Security audit
-2. `tests/category_cart.test.js` (10 tests) — Category CRUD & Cart operations (get, add, update, remove, clear)
-3. `tests/email.test.js` (5 tests) — Email invoice & HMAC-SHA256 QR token
-4. `tests/coupon.test.js` (8 tests) — Coupon logic, percentage, fixed, limits, expiry
-5. `tests/order.controller.test.js` (7 tests) — Checkout, stock deduction, rollback, cancellation
-6. `tests/checkout.api.test.js` (4 tests) — Supertest API checkout & validation
-7. `tests/payment.vnpay.test.js` (12 tests) — URL generator, Checksum HMAC-SHA512, Return handler, IPN Webhook
-8. `tests/socket.test.js` (5 tests) — JWT Handshake, room partitioning, notification emitters
-9. `tests/concurrency.test.js` (3 tests) — 50 concurrent requests, anti-price tampering, coupon race
-10. `tests/sync.test.js` (3 tests) — Offline orders sync idempotency, out-of-stock handling, cart sync
-11. `tests/review.test.js` (4 tests) — Verified purchase check (403), rating validation (400), creation (201), admin moderation (200)
-12. `tests/cart_inventory.test.js` (11 tests) — Cart merge, inventory checks & utils
-13. `tests/upload.test.js` (11 tests) — Cloudinary upload service & file validations
+```bash
+cd client-storefront
+npm test
+npm run lint
+npm run build
+```
+
+```bash
+cd client-admin
+npm test
+npm run lint
+npm run build
+```
+
+Mở terminal riêng ở thư mục gốc dự án cho mỗi nhóm lệnh. Test và cấu hình hỗ trợ nằm trong từng ứng dụng. Trên Windows PowerShell có thể dùng `npm.cmd` nếu execution policy chặn `npm.ps1`.
 
 ---
 
-## 🌐 Hướng Dẫn & Lưu Ý Triển Khai 100% Vercel (Tuần 8 — Đọc Kỹ Trước Khi Deploy)
+## 🌐 Cấu Hình Và Kiểm Chứng Triển Khai Vercel
 
-Hệ thống được thiết kế theo mô hình Monorepo gồm 3 ứng dụng độc lập. Toàn bộ hệ thống được tối ưu hóa để triển khai **100% trên Vercel** thông qua việc tạo **3 Projects riêng biệt** từ cùng 1 repository GitHub:
+Monorepo có cấu hình cho **3 Projects riêng biệt** từ cùng repository GitHub. Các cấu hình này chưa có bằng chứng deployment thật; cần kiểm chứng REST API, database, CORS và realtime trên môi trường được chọn:
 
 ```
                   GitHub Repository (Web-E-commerce)
@@ -330,8 +423,8 @@ Khi kết nối repository GitHub vào [Vercel Dashboard](https://vercel.com), h
 
 | Dự án Vercel | Root Directory | Framework Preset | Build Command | Output Directory | File cấu hình |
 |---|---|---|---|---|---|
-| **1. Client Storefront** | `client-storefront` | `Vite` | `npm run build` | `dist` | `client-storefront/vercel.json` |
-| **2. Client Admin** | `client-admin` | `Vite` | `npm run build` | `dist` | `client-admin/vercel.json` |
+| **1. Client Storefront** | `client-storefront` | `Vite` | `npm run build:deploy` | `dist` | `client-storefront/vercel.json` |
+| **2. Client Admin** | `client-admin` | `Vite` | `npm run build:deploy` | `dist` | `client-admin/vercel.json` |
 | **3. Server Backend** | `server` | `Other` | *(Để trống)* | *(Để trống)* | `server/vercel.json` & `server/api/index.js` |
 
 > [!NOTE]
@@ -375,11 +468,12 @@ Cấu hình trong mục **Settings → Environment Variables** của từng proj
      cd server
      npm test
      ```
-     Đảm bảo đạt **13/13 Test Suites PASS (98/98 Tests)** và không có conflict mã nguồn.
+     Kiểm tra kết quả và xử lý lỗi trước khi merge.
    * **Bước 4**: Mở Pull Request từ `develop` sang `main` để kích hoạt Vercel tự động deploy bản chính thức.
 3. **Về Cơ Chế Tái Sử Dụng Kết Nối MongoDB Serverless**:
-   * File `server/src/config/db.js` và `server/api/index.js` đã được cấu hình cơ chế connection caching (`readyState >= 1`). Serverless worker sẽ tái sử dụng kết nối database giữa các request thay vì mở kết nối mới liên tục, tránh gây nghẽn connection pool trên MongoDB Atlas.
+   * File `server/src/config/db.js` tái sử dụng kết nối đã mở và chờ cùng một promise khi các request đồng thời kết nối. `server/api/index.js` trả HTTP503 nếu database chưa kết nối được, trước khi chuyển request vào Express.
 4. **Về Tính Năng Socket.io Real-time Trên Vercel**:
-   * Vì Vercel vận hành theo kiến trúc Serverless (hàm chạy khi có request và tắt ngay sau đó), kết nối WebSocket liên tục của Socket.io sẽ hoạt động ở cơ chế fallback polling hoặc bị ngắt khi function đóng. Toàn bộ các luồng nghiệp vụ REST API (Auth, Sản phẩm, Giỏ hàng, Đặt hàng, Thanh toán VNPay, Đánh giá, Bảo mật) hoạt động ổn định 100%.
+   * Handler `server/api/index.js` hiện phục vụ Express REST; Socket.io được khởi tạo trong `server/src/server.js`. Cấu hình handler REST không tự cung cấp endpoint Socket.io hoặc polling fallback.
+   * Vercel hiện có WebSocket beta, nhưng Socket.io cần export HTTP server và cấu hình client dùng WebSocket transport; state/rooms giữa các instance cần cơ chế chia sẻ bên ngoài. Xem [tài liệu WebSockets Vercel](https://vercel.com/docs/functions/websockets). Chưa kiểm chứng kiến trúc này trên deployment thật của dự án; chạy `server.js` trên Node server vẫn là luồng realtime được kiểm thử local.
 
 

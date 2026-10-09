@@ -1,79 +1,109 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Empty,
+  Popconfirm,
+  Rate,
+  Select,
+  Space,
   Table,
   Tag,
-  Rate,
-  Button,
-  Space,
-  Select,
-  Card,
+  Tooltip,
   Typography,
   message,
-  Popconfirm,
-  Badge,
-  Tooltip,
 } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
+  ReloadOutlined,
   SafetyCertificateOutlined,
   StarOutlined,
-  ReloadOutlined,
 } from '@ant-design/icons';
+import { authService } from '../services/authService.js';
 import { reviewService } from '../services/reviewService.js';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
+const statusLabels = {
+  pending: 'Chờ duyệt',
+  approved: 'Đã duyệt hiển thị',
+  rejected: 'Đã ẩn / Từ chối',
+};
+
+const getErrorMessage = (error) => (
+  error.response?.data?.message || error.message || 'Không thể hoàn tất yêu cầu đánh giá.'
+);
 
 function Reviews() {
+  const role = authService.getSession()?.user?.role;
+  const canModerate = role === 'admin';
   const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [statusFilter, setStatusFilter] = useState();
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
+  const [reload, setReload] = useState(0);
+  const [updatingReviewId, setUpdatingReviewId] = useState(null);
+  const [updateError, setUpdateError] = useState('');
 
-  const fetchReviews = useCallback(async (status = statusFilter, page = 1) => {
+  const loadReviews = useCallback(async (signal) => {
     setLoading(true);
+    setLoadError('');
     try {
-      const data = await reviewService.list(status, page, pagination.pageSize);
-      setReviews(data.reviews || []);
-      setPagination((prev) => ({
-        ...prev,
-        current: page,
-        total: data.pagination?.total || data.reviews?.length || 0,
+      const data = await reviewService.list(
+        statusFilter || '',
+        pagination.current,
+        pagination.pageSize,
+        { signal },
+      );
+      setReviews(data.reviews);
+      setPagination((current) => ({
+        ...current,
+        current: data.pagination.page,
+        pageSize: data.pagination.limit,
+        total: data.pagination.total,
       }));
-    } catch {
-      message.error('Không thể tải danh sách đánh giá');
+    } catch (error) {
+      if (!signal.aborted) setLoadError(getErrorMessage(error));
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
-  }, [statusFilter, pagination.pageSize]);
+  }, [statusFilter, pagination.current, pagination.pageSize]);
 
   useEffect(() => {
-    fetchReviews(statusFilter, 1);
-  }, [statusFilter, fetchReviews]);
+    const controller = new AbortController();
+    loadReviews(controller.signal);
+    return () => controller.abort();
+  }, [loadReviews, reload]);
 
-  const handleStatusChange = async (id, newStatus) => {
+  const changeStatus = async (review, status) => {
+    if (updatingReviewId) return;
+    setUpdatingReviewId(review._id);
+    setUpdateError('');
     try {
-      await reviewService.updateStatus(id, newStatus);
+      await reviewService.updateStatus(review._id, status);
       message.success(
-        newStatus === 'approved'
+        status === 'approved'
           ? 'Đã duyệt hiển thị đánh giá'
-          : 'Đã ẩn đánh giá khỏi giao diện người dùng'
+          : 'Đã ẩn đánh giá khỏi giao diện người dùng',
       );
-      fetchReviews(statusFilter, pagination.current);
-    } catch {
-      message.error('Thao tác cập nhật trạng thái thất bại');
+      setReload((current) => current + 1);
+    } catch (error) {
+      setUpdateError(getErrorMessage(error));
+    } finally {
+      setUpdatingReviewId(null);
     }
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: 'Sản phẩm',
       dataIndex: 'product',
       key: 'product',
       render: (product) => (
         <div>
-          <Text strong>{product?.name || 'Sản phẩm không xác định'}</Text>
+          <Typography.Text strong>{product?.name || 'Sản phẩm không xác định'}</Typography.Text>
         </div>
       ),
     },
@@ -81,18 +111,14 @@ function Reviews() {
       title: 'Người đánh giá',
       dataIndex: 'user',
       key: 'user',
-      render: (user, record) => (
+      render: (user, review) => (
         <div>
           <div>{user?.email || 'Khách vãng lai'}</div>
-          {record.isVerifiedPurchase ? (
+          {review.isVerifiedPurchase ? (
             <Tooltip title="Đã mua hàng thực tế và hoàn tất đơn">
-              <Tag color="success" icon={<SafetyCertificateOutlined />}>
-                Đã mua hàng
-              </Tag>
+              <Tag color="success" icon={<SafetyCertificateOutlined />}>Đã mua hàng</Tag>
             </Tooltip>
-          ) : (
-            <Tag color="default">Chưa mua hàng</Tag>
-          )}
+          ) : <Tag>Chưa mua hàng</Tag>}
         </div>
       ),
     },
@@ -103,10 +129,8 @@ function Reviews() {
       width: 160,
       render: (rating) => (
         <div>
-          <Rate disabled defaultValue={rating} style={{ fontSize: 14 }} />
-          <Text type="secondary" style={{ marginLeft: 6 }}>
-            ({rating}/5)
-          </Text>
+          <Rate disabled value={rating} style={{ fontSize: 14 }} />
+          <Typography.Text type="secondary" style={{ marginLeft: 6 }}>({rating}/5)</Typography.Text>
         </div>
       ),
     },
@@ -115,24 +139,16 @@ function Reviews() {
       dataIndex: 'comment',
       key: 'comment',
       ellipsis: true,
-      render: (text) => <Text>{text}</Text>,
+      render: (comment) => <Typography.Text>{comment}</Typography.Text>,
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: 130,
+      width: 150,
       render: (status) => {
-        let color = 'default';
-        let text = 'Chờ duyệt';
-        if (status === 'approved') {
-          color = 'green';
-          text = 'Đã duyệt';
-        } else if (status === 'rejected') {
-          color = 'red';
-          text = 'Đã từ chối / Ẩn';
-        }
-        return <Tag color={color}>{text}</Tag>;
+        const color = status === 'approved' ? 'green' : status === 'rejected' ? 'red' : 'gold';
+        return <Tag color={color}>{statusLabels[status] || status}</Tag>;
       },
     },
     {
@@ -142,42 +158,57 @@ function Reviews() {
       width: 150,
       render: (date) => (date ? new Date(date).toLocaleDateString('vi-VN') : '—'),
     },
-    {
-      title: 'Thao tác kiểm duyệt',
-      key: 'action',
-      width: 180,
-      render: (_, record) => {
-        const id = record._id || record.id;
-        return (
-          <Space orientation="horizontal" size="small">
-            {record.status !== 'approved' && (
-              <Button
-                type="primary"
-                size="small"
-                icon={<CheckCircleOutlined />}
-                onClick={() => handleStatusChange(id, 'approved')}
+    ...(canModerate
+      ? [{
+        title: 'Thao tác kiểm duyệt',
+        key: 'action',
+        width: 190,
+        render: (_, review) => (
+          <Space size="small">
+            {review.status !== 'approved' && (
+              <Popconfirm
+                title="Duyệt đánh giá này?"
+                onConfirm={() => changeStatus(review, 'approved')}
+                okText="Duyệt"
+                cancelText="Hủy"
+                disabled={Boolean(updatingReviewId)}
               >
-                Duyệt
-              </Button>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<CheckCircleOutlined />}
+                  loading={updatingReviewId === review._id}
+                  disabled={Boolean(updatingReviewId)}
+                >
+                  Duyệt
+                </Button>
+              </Popconfirm>
             )}
-            {record.status !== 'rejected' && (
+            {review.status !== 'rejected' && (
               <Popconfirm
                 title="Ẩn đánh giá này?"
                 description="Đánh giá bị ẩn sẽ không hiển thị trên trang sản phẩm."
-                onConfirm={() => handleStatusChange(id, 'rejected')}
+                onConfirm={() => changeStatus(review, 'rejected')}
                 okText="Đồng ý"
                 cancelText="Hủy"
+                disabled={Boolean(updatingReviewId)}
               >
-                <Button danger size="small" icon={<CloseCircleOutlined />}>
+                <Button
+                  danger
+                  size="small"
+                  icon={<CloseCircleOutlined />}
+                  loading={updatingReviewId === review._id}
+                  disabled={Boolean(updatingReviewId)}
+                >
                   Ẩn
                 </Button>
               </Popconfirm>
             )}
           </Space>
-        );
-      },
-    },
-  ];
+        ),
+      }]
+      : []),
+  ], [canModerate, updatingReviewId]);
 
   return (
     <div className="reviews-page">
@@ -193,54 +224,77 @@ function Reviews() {
           }}
         >
           <div>
-            <Title level={4} style={{ margin: 0 }}>
+            <Typography.Title level={4} style={{ margin: 0 }}>
               <StarOutlined style={{ color: '#faad14', marginRight: 8 }} />
               Kiểm duyệt Đánh giá & Phản hồi (Reviews Moderation)
-            </Title>
-            <Text type="secondary">
-              Quản lý, kiểm duyệt phản hồi từ khách hàng, phân biệt đơn mua thực tế (Verified
-              Purchase) và ngăn chặn spam.
-            </Text>
+            </Typography.Title>
+            <Typography.Text type="secondary">
+              Quản lý phản hồi từ khách hàng, bao gồm trạng thái đã mua hàng thực tế.
+              {canModerate ? '' : ' Bạn có quyền xem nhưng không có quyền kiểm duyệt.'}
+            </Typography.Text>
           </div>
-
           <Space>
             <Select
+              allowClear
               value={statusFilter}
-              onChange={(value) => setStatusFilter(value)}
-              style={{ width: 170 }}
+              onChange={(value) => {
+                setStatusFilter(value);
+                setPagination((current) => ({ ...current, current: 1 }));
+              }}
+              style={{ width: 190 }}
               placeholder="Lọc theo trạng thái"
-            >
-              <Option value="">Tất cả trạng thái</Option>
-              <Option value="pending">
-                <Badge status="warning" text="Chờ duyệt" />
-              </Option>
-              <Option value="approved">
-                <Badge status="success" text="Đã duyệt hiển thị" />
-              </Option>
-              <Option value="rejected">
-                <Badge status="error" text="Đã ẩn / Từ chối" />
-              </Option>
-            </Select>
-
+              options={[
+                { value: 'pending', label: <Badge status="warning" text="Chờ duyệt" /> },
+                { value: 'approved', label: <Badge status="success" text="Đã duyệt hiển thị" /> },
+                { value: 'rejected', label: <Badge status="error" text="Đã ẩn / Từ chối" /> },
+              ]}
+            />
             <Button
               icon={<ReloadOutlined />}
-              onClick={() => fetchReviews(statusFilter, pagination.current)}
+              loading={loading}
+              onClick={() => setReload((current) => current + 1)}
             >
               Làm mới
             </Button>
           </Space>
         </div>
 
+        {loadError && (
+          <Alert
+            type="error"
+            showIcon
+            message={loadError}
+            action={<Button size="small" onClick={() => setReload((current) => current + 1)}>Thử lại</Button>}
+            style={{ marginBottom: 16 }}
+          />
+        )}
+        {updateError && (
+          <Alert
+            type="error"
+            showIcon
+            message={updateError}
+            closable
+            onClose={() => setUpdateError('')}
+            style={{ marginBottom: 16 }}
+          />
+        )}
         <Table
           columns={columns}
           dataSource={reviews}
-          rowKey={(r) => r._id || r.id}
+          rowKey="_id"
           loading={loading}
+          locale={{
+            emptyText: loadError
+              ? <Empty description="Không thể tải danh sách đánh giá." />
+              : <Empty description="Không có đánh giá phù hợp." />,
+          }}
           pagination={{
             current: pagination.current,
             pageSize: pagination.pageSize,
             total: pagination.total,
-            onChange: (page) => fetchReviews(statusFilter, page),
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50'],
+            onChange: (current, pageSize) => setPagination((value) => ({ ...value, current, pageSize })),
           }}
         />
       </Card>

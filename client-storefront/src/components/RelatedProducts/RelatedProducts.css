@@ -1,0 +1,25 @@
+.related-products { margin: 3rem 0 0; padding-top: 2rem; border-top: 1px solid var(--line); }
+.related-products > h2 { margin: 0 0 1.5rem; font-family: var(--display-font); font-size: clamp(1.4rem, 3vw, 1.9rem); }
+.related-products-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
+.related-products-grid .product-card { display: flex; flex-direction: column; }
+.related-products-grid .product-card-body { display: flex; flex: 1; flex-direction: column; }
+.related-products-grid .product-card-actions { margin-top: auto; }
+.related-products-grid .product-prices { flex-wrap: wrap; }
+.related-product-skeleton { overflow: hidden; min-width: 0; padding-bottom: 1rem; background: #fff; border: 1px solid var(--line); }
+.related-product-skeleton > div, .related-product-skeleton > span { display: block; background: linear-gradient(110deg, #e8eee7 30%, #f5f1e9 50%, #e8eee7 70%); background-size: 200% 100%; animation: related-products-skeleton 1.4s ease-in-out infinite; }
+.related-product-skeleton > div { aspect-ratio: 1 / 1.08; }
+.related-product-skeleton > span { height: 1rem; margin: 1rem 1rem 0; }
+.related-product-skeleton > span:last-child { width: 45%; }
+.related-products-error { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: 1rem; color: var(--muted); background: #f2eee7; }
+.related-products-error p { margin: 0; }
+.related-products-error button { min-height: 44px; padding: .6rem 1rem; color: #fff; background: var(--ink); border: 0; cursor: pointer; font-weight: 700; }
+@keyframes related-products-skeleton { 50% { background-position: -100% 0; } }
+@media (max-width: 767px) {
+  .related-products { margin-top: 2rem; padding-top: 1.5rem; }
+  .related-products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+  .related-products-grid .product-card-body { padding: .75rem; }
+  .related-products-grid .product-card h2 { overflow-wrap: anywhere; font-size: .88rem; }
+  .related-products-grid .product-prices { gap: .35rem; font-size: .8rem; }
+}
+@media (max-width: 340px) { .related-products-grid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .related-product-skeleton > div, .related-product-skeleton > span { animation: none; } }
