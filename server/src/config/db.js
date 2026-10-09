@@ -7,8 +7,18 @@
  * ------------------------------------------------------------
  */
 
+const dns = require('dns');
 const mongoose = require('mongoose');
 const env = require('./env');
+
+// Hỗ trợ phân giải DNS SRV (mongodb+srv://) trên mạng nội địa / Windows khi DNS mặc định từ chối querySrv
+if (env.MONGO_URI && env.MONGO_URI.startsWith('mongodb+srv://')) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch {
+    // Bỏ qua nếu môi trường không cho phép cấu hình DNS
+  }
+}
 
 let connectionPromise;
 let listenersAttached = false;

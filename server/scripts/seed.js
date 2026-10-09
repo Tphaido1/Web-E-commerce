@@ -13,11 +13,20 @@
  * ------------------------------------------------------------
  */
 
+const dns = require('dns');
 const path = require('path');
 const dotenv = require('dotenv');
 
 // Load env từ server/.env
 dotenv.config({ path: path.join(__dirname, '../.env') });
+
+if (process.env.MONGO_URI && process.env.MONGO_URI.startsWith('mongodb+srv://')) {
+    try {
+        dns.setServers(['8.8.8.8', '1.1.1.1']);
+    } catch {
+        // Bỏ qua nếu môi trường không cho phép cấu hình DNS
+    }
+}
 
 const mongoose = require('mongoose');
 const User = require('../src/models/User.model');

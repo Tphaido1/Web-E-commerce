@@ -57,6 +57,9 @@ npm install
 # Tạo file .env từ file mẫu, sau đó chỉnh sửa MONGO_URI, JWT_SECRET cho phù hợp
 cp .env.example .env
 
+# (Tùy chọn) Nạp dữ liệu mẫu ban đầu (sản phẩm, tài khoản admin/vendor/customer)
+npm run seed
+
 # Chạy ở chế độ development (tự động reload khi code thay đổi)
 npm run dev
 
@@ -124,6 +127,16 @@ npm run dev
 ```
 
 Truy cập: `http://localhost:5174`
+
+#### 🔑 Tài khoản đăng nhập mẫu Admin & Vendor (Database Seed)
+
+Chạy lệnh `npm run seed` trong thư mục `server/` để nạp sẵn dữ liệu và các tài khoản mẫu vào MongoDB. Sau đó bạn có thể sử dụng thông tin bên dưới để đăng nhập:
+
+| Vai trò | Email đăng nhập | Mật khẩu mặc định | Phạm vi quyền hạn |
+|---|---|---|---|
+| **Admin (Quản trị viên)** | `admin@ecommerce.com` | `Admin@123` | Toàn quyền quản trị hệ thống tại `http://localhost:5174` (Sản phẩm, Danh mục, Đơn hàng, Tồn kho, Người dùng, Thống kê) |
+| **Vendor (Người bán)** | `vendor@ecommerce.com` | `Vendor@123` | Đăng nhập `http://localhost:5174`, chỉ xem và quản lý các sản phẩm/đơn hàng thuộc gian hàng của mình |
+| **Customer (Khách hàng)** | `customer@ecommerce.com` | `Customer@123` | Đăng nhập tại Storefront `http://localhost:5173` để mua sắm, áp mã giảm giá và theo dõi đơn hàng |
 
 #### Cấu hình Admin/Vendor
 
