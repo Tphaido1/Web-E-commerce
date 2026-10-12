@@ -35,3 +35,4 @@ coverage/
 # thinh
 .task_logs/
 GEMINI.md
+.data/
