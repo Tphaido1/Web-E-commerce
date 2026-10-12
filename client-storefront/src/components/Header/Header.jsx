@@ -59,7 +59,7 @@ function Header() {
       <div className="header-inner">
         <Link className="brand" to="/" onClick={closeMenu}>
           <span className="brand-mark">N</span>
-          <span>NovaMart</span>
+          <span>Nova Fashion</span>
         </Link>
 
         <button

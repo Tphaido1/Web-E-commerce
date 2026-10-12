@@ -27,7 +27,8 @@ const variantSchema = new mongoose.Schema(
 
 const productSchema = new mongoose.Schema(
   {
-    // Legacy products remain unassigned and are managed by Admin only.
+    // Mô hình Single Shop: Admin là chủ shop trực tiếp quản lý toàn bộ sản phẩm (vendor = null).
+    // Trường 'vendor' được bảo lưu (tạm ẩn trên UI) để sẵn sàng mở rộng đa người bán trong tương lai mà không sửa DB.
     vendor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     name: {
       type: String,
@@ -95,5 +96,7 @@ const productSchema = new mongoose.Schema(
 
 productSchema.index({ name: 'text', description: 'text' });
 productSchema.index({ category: 1, isActive: 1 });
+productSchema.index({ isActive: 1, price: 1 });
+productSchema.index({ isActive: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Product', productSchema);

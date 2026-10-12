@@ -1,10 +1,11 @@
-﻿import { CheckCircleOutlined, DollarOutlined, InboxOutlined, ShoppingCartOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Col, Empty, Input, Row, Spin, Statistic, Table, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, DollarOutlined, FileExcelOutlined, InboxOutlined, ShoppingCartOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Col, Empty, Input, Row, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { analyticsService } from '../services/analyticsService.js';
 import { orderService } from '../services/orderService.js';
+import { reportService } from '../services/reportService.js';
 import { subscribeToNewOrders } from '../services/orderEvents.js';
 
 const formatMoney = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value || 0);
@@ -68,9 +69,36 @@ function Dashboard() {
   ];
   const statusData = analytics?.orderStatuses?.filter((item) => item.count > 0).map((item) => ({ ...item, name: formatStatus(item.status) })) || [];
 
+  const [exporting, setExporting] = useState(false);
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await reportService.downloadOrdersExcel({ startDate: range.from, endDate: range.to });
+      message.success('Xuất file báo cáo Excel thành công!');
+    } catch (err) {
+      message.error(err.response?.data?.message || err.message || 'Không thể xuất file báo cáo.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="page-stack">
-      <section className="page-intro"><div><Typography.Text className="eyebrow">OVERVIEW</Typography.Text><Typography.Title level={1}>Dashboard</Typography.Title><Typography.Paragraph>Track revenue and order activity for your workspace.</Typography.Paragraph></div><Button onClick={() => setReload((current) => current + 1)} loading={loading}>Refresh</Button></section>
+      <section className="page-intro">
+        <div>
+          <Typography.Text className="eyebrow">OVERVIEW</Typography.Text>
+          <Typography.Title level={1}>Dashboard</Typography.Title>
+          <Typography.Paragraph>Track revenue and order activity for your workspace.</Typography.Paragraph>
+        </div>
+        <Space>
+          <Button icon={<FileExcelOutlined />} type="primary" loading={exporting} onClick={handleExport}>
+            Xuất Báo Cáo Excel
+          </Button>
+          <Button onClick={() => setReload((current) => current + 1)} loading={loading}>
+            Refresh
+          </Button>
+        </Space>
+      </section>
       <Card className="dashboard-filter-card" variant="borderless">
         <form className="dashboard-date-filter" onSubmit={applyRange}>
           <label>From<Input type="date" aria-label="Analytics start date" value={from} onChange={(event) => setFrom(event.target.value)} /></label>

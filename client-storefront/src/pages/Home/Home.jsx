@@ -4,10 +4,20 @@ import Footer from '../../components/Footer/Footer.jsx';
 import { Link } from 'react-router-dom';
 import './Home.css';
 
+/* =========================================================================
+ * PHẦN MỞ RỘNG (TẠM ẨN): CÁC BỘ SƯU TẬP ĐA NGÀNH HÀNG CŨ
+ * const collections_MultiIndustry_Old = [
+ *   { name: 'Thời trang', detail: 'Mới mỗi tuần', tone: 'sage' },
+ *   { name: 'Đồ gia dụng', detail: 'Cho căn nhà có gu', tone: 'sand' },
+ *   { name: 'Phụ kiện', detail: 'Điểm nhấn vừa đủ', tone: 'rose' },
+ * ];
+ * ========================================================================= */
+
+// Bộ sưu tập chuyên biệt cho Shop Quần Áo Thời Trang
 const collections = [
-  { name: 'Thời trang', detail: 'Mới mỗi tuần', tone: 'sage' },
-  { name: 'Đồ gia dụng', detail: 'Cho căn nhà có gu', tone: 'sand' },
-  { name: 'Phụ kiện', detail: 'Điểm nhấn vừa đủ', tone: 'rose' },
+  { name: 'Áo thun & Sơ mi', detail: 'Basic & Thanh lịch', tone: 'sage' },
+  { name: 'Quần Jean & Kaki', detail: 'Form chuẩn tôn dáng', tone: 'sand' },
+  { name: 'Áo khoác & Đầm', detail: 'Xu hướng mới nhất', tone: 'rose' },
 ];
 
 function Home() {

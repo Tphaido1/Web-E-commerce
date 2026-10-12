@@ -128,15 +128,15 @@ npm run dev
 
 Truy cập: `http://localhost:5174`
 
-#### 🔑 Tài khoản đăng nhập mẫu Admin & Vendor (Database Seed)
+#### 🔑 Tài khoản đăng nhập mẫu (Mô hình Shop Quần Áo - Single Shop)
 
-Chạy lệnh `npm run seed` trong thư mục `server/` để nạp sẵn dữ liệu và các tài khoản mẫu vào MongoDB. Sau đó bạn có thể sử dụng thông tin bên dưới để đăng nhập:
+Chạy lệnh `npm run seed` trong thư mục `server/` để nạp sẵn dữ liệu quần áo thời trang mẫu (Categories, Products, Variants, Inventory, Coupons) và các tài khoản vào MongoDB. Sau đó bạn có thể sử dụng thông tin bên dưới để đăng nhập:
 
 | Vai trò | Email đăng nhập | Mật khẩu mặc định | Phạm vi quyền hạn |
 |---|---|---|---|
-| **Admin (Quản trị viên)** | `admin@ecommerce.com` | `Admin@123` | Toàn quyền quản trị hệ thống tại `http://localhost:5174` (Sản phẩm, Danh mục, Đơn hàng, Tồn kho, Người dùng, Thống kê) |
-| **Vendor (Người bán)** | `vendor@ecommerce.com` | `Vendor@123` | Đăng nhập `http://localhost:5174`, chỉ xem và quản lý các sản phẩm/đơn hàng thuộc gian hàng của mình |
-| **Customer (Khách hàng)** | `customer@ecommerce.com` | `Customer@123` | Đăng nhập tại Storefront `http://localhost:5173` để mua sắm, áp mã giảm giá và theo dõi đơn hàng |
+| **Chủ shop (Admin)** | `admin@ecommerce.com` | `Admin@123` | Toàn quyền quản trị cửa hàng tại `http://localhost:5174` (Sản phẩm quần áo, Danh mục, Đơn hàng, Tồn kho SKU, Người dùng, Thống kê doanh thu) |
+| **Customer (Khách hàng)** | `customer@ecommerce.com` | `Customer@123` | Đăng nhập tại Storefront `http://localhost:5173` để xem thời trang, chọn size/màu, áp mã giảm giá (`FASHION50`, `OUTFIT10`, `VIPSTYLE20`) và đặt hàng |
+| *Vendor (Tạm ẩn)* | *vendor@ecommerce.com* | *Vendor@123* | *Phần mở rộng sàn đa người bán (Multi-vendor) — được bảo lưu nguyên vẹn trong DB/Mongoose models và sẵn sàng kích hoạt lại khi mở rộng quy mô.* |
 
 #### Cấu hình Admin/Vendor
 
@@ -384,6 +384,39 @@ Response `200`:
 - **API Kiểm Toán Trạng Thái Bảo Mật (Security Audit)**:
   - `GET /api/v1/security/audit`: Endpoint công khai báo cáo chi tiết các lớp phòng thủ đang hoạt động trong hệ thống.
   - `POST /api/v1/security/echo`: Endpoint kiểm tra dữ liệu sau khi đi qua các bộ lọc Sanitizer.
+
+---
+
+### Xuất báo cáo tài chính, Excel & Hóa đơn PDF (Thành viên D - Tuần 7)
+
+- **Xuất Báo Cáo Đơn Hàng & Doanh Thu Excel (`exceljs`)**:
+  - `GET /api/v1/reports/orders/excel`: Dành cho Chủ shop (Admin). Hỗ trợ lọc theo `startDate`, `endDate`, `status`, `paymentStatus`.
+  - File Excel `.xlsx` gồm **2 Sheet chuyên nghiệp**:
+    - **Sheet 1 (Danh Sách Đơn Hàng Chi Tiết)**: STT, Mã đơn hàng, Ngày đặt, Khách hàng, SĐT, Địa chỉ, Danh sách sản phẩm & SKU biến thể (Màu, Size), Số lượng, Hình thức TT, Trạng thái TT, Trạng thái đơn, Tiền hàng, Giảm giá, Phí ship, Tổng thanh toán (định dạng tiền tệ chuẩn VND).
+    - **Sheet 2 (Tổng Hợp Doanh Thu)**: Tổng kết số đơn, đơn đã thanh toán, tổng doanh thu thực nhận, tổng voucher đã áp dụng, giá trị đơn trung bình (AOV).
+- **Xuất Hóa Đơn Bán Lẻ PDF Kèm Mã QR (`pdfkit` + `qrcode`)**:
+  - `GET /api/v1/reports/orders/:id/invoice-pdf`: Tự động tạo và tải về file PDF hóa đơn bán lẻ chuẩn nhận diện **NOVA FASHION**.
+  - Nhúng trực tiếp **mã QR tra cứu đơn hàng** góc trên bên phải trang hóa đơn.
+  - Bảng danh mục sản phẩm may mặc chi tiết (Tên hàng, SKU, Đơn giá, Số lượng, Thành tiền, Chiết khấu voucher, Phí ship, Tổng cộng).
+  - Phân quyền: Chủ shop có thể xuất hóa đơn cho mọi đơn hàng; Khách hàng có thể xuất hóa đơn cho đơn của chính mình.
+- **Tích Hợp Trên Giao Diện Admin (`client-admin`)**:
+  - Nút **"Xuất Báo Cáo Excel"** tích hợp trực tiếp trên trang [Dashboard](file:///c:/HTTT/Web-E-commerce/client-admin/src/pages/Dashboard.jsx) và trang [Orders](file:///c:/HTTT/Web-E-commerce/client-admin/src/pages/Orders.jsx).
+  - Nút **"In / Tải Hóa Đơn PDF"** tích hợp trong bảng đơn hàng và modal xem chi tiết đơn hàng.
+
+---
+
+## 📊 Bảng Tiến Độ Hoàn Thành 8 Tuần Dự Án (Mô hình Single Shop - Nova Fashion)
+
+| Tuần | Hạng mục cốt lõi | Chi tiết tính năng đã hoàn thành | Trạng thái |
+|---|---|---|---|
+| **Tuần 1** | Kiến trúc MVC & Schema | Monorepo 3 tầng (`server`, `client-storefront`, `client-admin`), Schemas Mongoose (User, Category, Product, Inventory, Cart, Order, Coupon, Review, AuditLog). | ✅ Hoàn thành 100% |
+| **Tuần 2** | Auth, RBAC & Catalog | JWT Access/Refresh Token, phân quyền Admin & Customer, CRUD Danh mục & Sản phẩm thời trang (Color/Size variants), Cloudinary Upload, Seeder mẫu quần áo. | ✅ Hoàn thành 100% |
+| **Tuần 3** | Cart & Inventory Engine | Giỏ hàng vãng lai & tự động gộp khi đăng nhập, Optimistic UI, trừ kho nguyên tử (Atomic Operations `$inc`), UI quản trị kho hàng SKU. | ✅ Hoàn thành 100% |
+| **Tuần 4** | Checkout & Coupon Engine | Giao dịch đặt hàng Atomic, xác thực mã giảm giá (`FASHION50`, `OUTFIT10`, `VIPSTYLE20`), Email hóa đơn kèm mã QR bảo mật HMAC token. | ✅ Hoàn thành 100% |
+| **Tuần 5** | Online Payment & Socket.io | Cổng thanh toán VNPay Sandbox + COD, Socket.io Server & chuông thông báo đơn hàng real-time, tra cứu đơn hàng công khai qua mã/QR, Audit Log Service. | ✅ Hoàn thành 100% |
+| **Tuần 6** | Concurrency & PWA Offline | Chống Race Condition khi Flash Sale (Node.js stress test), Sync Offline Queue API, Review & Rating thời trang, PWA Offline Service Worker & Dexie.js (IndexedDB). | ✅ Hoàn thành 100% |
+| **Tuần 7** | Analytics & Export Excel/PDF | Rate Limiting, Helmet, NoSQL Sanitizer, XSS Defense, Recharts Dashboard thống kê doanh thu, **API & UI xuất báo cáo Excel (.xlsx) và hóa đơn PDF có mã QR**. | ✅ Hoàn thành 100% |
+| **Tuần 8** | Production Tuning & Deploy | Tối ưu hóa Database Indexing (compound & text indexes), kiểm thử toàn diện, cấu hình SPA fallback Vercel, DNS Resolver cho MongoDB Atlas. | ✅ Hoàn thành 100% |
 
 ---
 

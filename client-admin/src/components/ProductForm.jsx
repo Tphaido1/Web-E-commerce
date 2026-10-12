@@ -60,7 +60,7 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
           name={[field.name, 'color']}
           rules={[{ required: true, whitespace: true, message: 'Color is required.' }, uniqueCombinationRule(field)]}
         >
-          <Input placeholder="Black" />
+          <Input placeholder="Trắng, Đen, Xanh..." />
         </Form.Item>
       ),
     },
@@ -72,7 +72,7 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
           name={[field.name, 'size']}
           rules={[{ required: true, whitespace: true, message: 'Size is required.' }, uniqueCombinationRule(field)]}
         >
-          <Input placeholder="M" />
+          <Input placeholder="S, M, L, XL, 30, 31..." />
         </Form.Item>
       ),
     },
@@ -96,7 +96,7 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
           name={[field.name, 'sku']}
           rules={[{ required: true, whitespace: true, message: 'SKU is required.' }, uniqueVariantSkuRule(field)]}
         >
-          <Input placeholder="SKU-B-M" />
+          <Input placeholder="CLOTH-TS-001-W-M" />
         </Form.Item>
       ),
     },
@@ -168,27 +168,34 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
             name="name"
             rules={[{ required: true, whitespace: true, message: 'Product name is required.' }]}
           >
-            <Input placeholder="Product name" />
+            <Input placeholder="Tên sản phẩm (VD: Áo Thun Cotton Compact, Sơ Mi Oxford...)" />
           </Form.Item>
-          {canAssignVendor && (
-            <Form.Item label="Product owner" name="vendor" help={vendorError || 'Leave Admin-managed for products without a Vendor owner.'} validateStatus={vendorError ? 'warning' : undefined}>
-              <Select
-                showSearch
-                filterOption={false}
-                onSearch={onVendorSearch}
-                loading={vendorLoading}
-                options={[
-                  { value: '', label: 'Admin-managed' },
-                  ...vendors.map((vendor) => ({ value: vendor._id, label: vendor.email })),
-                  ...(initialValues?.vendor && !vendors.some((vendor) => vendor._id === initialValues.vendor)
-                    ? [{ value: initialValues.vendor, label: `Assigned Vendor (${initialValues.vendor})` }] : []),
-                ]}
-              />
-            </Form.Item>
-          )}
+          {/* =========================================================================
+           * PHẦN MỞ RỘNG (TẠM ẨN): CHỌN VENDOR CHO MÔ HÌNH MULTI-VENDOR
+           * Trong mô hình Single Shop: Admin là chủ shop trực tiếp quản lý toàn bộ sản phẩm.
+           * {canAssignVendor && (
+           *   <Form.Item label="Product owner" name="vendor" help={vendorError || 'Leave Admin-managed for products without a Vendor owner.'} validateStatus={vendorError ? 'warning' : undefined}>
+           *     <Select
+           *       showSearch
+           *       filterOption={false}
+           *       onSearch={onVendorSearch}
+           *       loading={vendorLoading}
+           *       options={[
+           *         { value: '', label: 'Admin-managed' },
+           *         ...vendors.map((vendor) => ({ value: vendor._id, label: vendor.email })),
+           *         ...(initialValues?.vendor && !vendors.some((vendor) => vendor._id === initialValues.vendor)
+           *           ? [{ value: initialValues.vendor, label: `Assigned Vendor (${initialValues.vendor})` }] : []),
+           *       ]}
+           *     />
+           *   </Form.Item>
+           * )}
+           * ========================================================================= */}
+          <Form.Item name="vendor" hidden>
+            <Input />
+          </Form.Item>
           {!isEditing && (
             <Form.Item label="Inventory SKU" name="sku" rules={baseSkuRules}>
-              <Input placeholder="NOVA-PROD-001" />
+              <Input placeholder="CLOTH-TS-001" />
             </Form.Item>
           )}
           <Form.Item
@@ -196,7 +203,7 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
             name="category"
             rules={[{ required: true, message: 'Category is required.' }]}
           >
-            <Select options={categories.map((category) => ({ value: category.name, label: category.name }))} placeholder="Select category" />
+            <Select options={categories.map((category) => ({ value: category.name, label: category.name }))} placeholder="Chọn danh mục quần áo" />
           </Form.Item>
           <Form.Item
             label="Base Price"
@@ -216,7 +223,7 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
             <InputNumber min={0} precision={0} disabled={isEditing} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="Description" name="description" className="form-wide">
-            <Input.TextArea rows={4} placeholder="Tell customers about this product" />
+            <Input.TextArea rows={4} placeholder="Mô tả chất liệu vải, kiểu dáng form, độ co giãn, hướng dẫn chọn size và bảo quản..." />
           </Form.Item>
         </div>
       </Card>

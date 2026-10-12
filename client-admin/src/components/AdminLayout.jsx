@@ -88,8 +88,8 @@ function AdminLayout() {
         <div className="brand-lockup">
           <div className="brand-mark">N</div>
           <div className="brand-copy">
-            <strong>NOVA</strong>
-            <span>Commerce admin</span>
+            <strong>NOVA FASHION</strong>
+            <span>Shop Quần Áo (Chủ shop)</span>
           </div>
         </div>
         <div className="sider-label">Workspace</div>
@@ -117,8 +117,8 @@ function AdminLayout() {
         <div className="brand-lockup">
           <div className="brand-mark">N</div>
           <div className="brand-copy">
-            <strong>NOVA</strong>
-            <span>Commerce admin</span>
+            <strong>NOVA FASHION</strong>
+            <span>Shop Quần Áo (Chủ shop)</span>
           </div>
         </div>
         <div className="sider-label">Workspace</div>
@@ -159,7 +159,7 @@ function AdminLayout() {
             <OrderNotifications />
             <div className="profile-copy">
               <strong>{user.email}</strong>
-              <span>{user.role === 'admin' ? 'Administrator' : 'Vendor'}</span>
+              <span>{user.role === 'admin' ? 'Chủ shop (Admin)' : (user.role === 'vendor' ? 'Vendor (Tạm ẩn)' : 'User')}</span>
             </div>
             <Avatar className="profile-avatar">{userInitials}</Avatar>
             <Button

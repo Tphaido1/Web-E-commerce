@@ -20,6 +20,8 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
+      // Mô hình Single Shop: 'admin' đóng vai trò là Chủ Shop (Shop Owner), 'customer' là Khách hàng.
+      // Role 'vendor' được bảo lưu (tạm ẩn) phục vụ mở rộng sàn đa người bán trong tương lai mà không làm vỡ DB.
       enum: ['admin', 'vendor', 'customer'],
       default: 'customer',
     },

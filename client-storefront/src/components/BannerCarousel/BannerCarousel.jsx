@@ -1,25 +1,35 @@
 import { useEffect, useState } from 'react';
 import './BannerCarousel.css';
 
+/* =========================================================================
+ * PHẦN MỞ RỘNG (TẠM ẨN): BANNER ĐA NGÀNH HÀNG CŨ
+ * const banners_Old = [
+ *   { eyebrow: 'Bộ sưu tập mới', title: 'Những món đồ làm ngày thường thú vị hơn.', description: 'Khám phá thiết kế được chọn lọc cho nhịp sống hiện đại.', action: 'Khám phá ngay', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1400&q=85' },
+ *   { eyebrow: 'Flash sale cuối tuần', title: 'Ưu đãi đến 40% cho phong cách mới.', description: 'Cơ hội làm mới tủ đồ với những lựa chọn được yêu thích nhất.', action: 'Xem ưu đãi', image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1400&q=85' },
+ *   { eyebrow: 'Đặc quyền NovaMart', title: 'Miễn phí giao hàng cho đơn từ 500K.', description: 'Mua sắm thoải mái hơn, giao hàng tận nơi nhanh chóng.', action: 'Mua sắm ngay', image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1400&q=85' },
+ * ];
+ * ========================================================================= */
+
+// Banner thời trang chuyên biệt cho Shop Quần Áo
 const banners = [
   {
     eyebrow: 'Bộ sưu tập mới',
-    title: 'Những món đồ làm ngày thường thú vị hơn.',
-    description: 'Khám phá thiết kế được chọn lọc cho nhịp sống hiện đại.',
+    title: 'Định hình phong cách với thời trang tối giản.',
+    description: 'Chất liệu vải cao cấp, thoáng mát, chuẩn form dáng cho mọi hoạt động.',
     action: 'Khám phá ngay',
-    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1400&q=85',
-  },
-  {
-    eyebrow: 'Flash sale cuối tuần',
-    title: 'Ưu đãi đến 40% cho phong cách mới.',
-    description: 'Cơ hội làm mới tủ đồ với những lựa chọn được yêu thích nhất.',
-    action: 'Xem ưu đãi',
     image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=1400&q=85',
   },
   {
-    eyebrow: 'Đặc quyền NovaMart',
-    title: 'Miễn phí giao hàng cho đơn từ 500K.',
-    description: 'Mua sắm thoải mái hơn, giao hàng tận nơi nhanh chóng.',
+    eyebrow: 'Ưu đãi mùa này',
+    title: 'Giảm đến 30% cho các mẫu sơ mi và áo thun hot.',
+    description: 'Làm mới tủ đồ hằng ngày với những thiết kế được yêu thích nhất.',
+    action: 'Xem ưu đãi',
+    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1400&q=85',
+  },
+  {
+    eyebrow: 'Đặc quyền mua sắm',
+    title: 'Freeship đơn từ 300K - Đổi size miễn phí trong 7 ngày.',
+    description: 'Mua sắm an tâm với cam kết chất lượng chuẩn từng đường may.',
     action: 'Mua sắm ngay',
     image: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1400&q=85',
   },

@@ -14,3 +14,7 @@ process.env.SMTP_PASS = '';
 process.env.CLOUDINARY_CLOUD_NAME = '';
 process.env.CLOUDINARY_API_KEY = '';
 process.env.CLOUDINARY_API_SECRET = '';
+process.env.MONGOMS_MD5_CHECK = '0';
+if (typeof jest !== 'undefined') {
+  jest.setTimeout(30000);
+}

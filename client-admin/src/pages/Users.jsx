@@ -6,7 +6,12 @@ import { authService } from '../services/authService.js';
 import { userService } from '../services/userService.js';
 
 const errorMessage = (error) => error.response?.data?.message || error.message || 'Unable to manage users.';
-const roleOptions = ['customer', 'vendor', 'admin'].map((role) => ({ value: role, label: role.charAt(0).toUpperCase() + role.slice(1) }));
+const roleOptions = [
+  { value: 'customer', label: 'Khách hàng (Customer)' },
+  { value: 'admin', label: 'Chủ shop (Admin)' },
+  // PHẦN MỞ RỘNG (TẠM ẨN): Role vendor cho mô hình multi-vendor
+  // { value: 'vendor', label: 'Vendor (Người bán)' },
+];
 
 function Users() {
   const session = authService.getSession();
