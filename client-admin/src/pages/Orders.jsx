@@ -1,4 +1,4 @@
-import { SearchOutlined } from '@ant-design/icons';
+import { FileExcelOutlined, PrinterOutlined, SearchOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { authService } from '../services/authService.js';
 import { orderService } from '../services/orderService.js';
+import { reportService } from '../services/reportService.js';
 import { subscribeToNewOrders } from '../services/orderEvents.js';
 
 const orderStatuses = ['pending', 'processing', 'shipping', 'delivered', 'cancelled'];
@@ -65,6 +66,30 @@ function Orders() {
   const [updating, setUpdating] = useState(false);
   const updateInFlight = useRef(false);
   const canManageOrders = ['admin', 'vendor'].includes(user?.role);
+  const [exportingExcel, setExportingExcel] = useState(false);
+
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      await reportService.downloadOrdersExcel({ status, paymentStatus, search });
+      message.success('Xuất file Excel thành công!');
+    } catch (error) {
+      message.error(getErrorMessage(error) || 'Không thể xuất file Excel.');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const handleExportInvoice = async (order) => {
+    if (!order) return;
+    try {
+      message.loading({ content: 'Đang tạo hóa đơn PDF...', key: 'invoice' });
+      await reportService.downloadOrderInvoicePdf(order._id, order.orderCode);
+      message.success({ content: 'Tải hóa đơn PDF thành công!', key: 'invoice' });
+    } catch (error) {
+      message.error({ content: getErrorMessage(error) || 'Không thể tạo hóa đơn PDF.', key: 'invoice' });
+    }
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -188,6 +213,20 @@ function Orders() {
       render: (value) => <Tag color={statusColors[value]}>{formatStatus(value)}</Tag>,
     },
     { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt', render: formatDate },
+    {
+      title: 'Hóa đơn',
+      key: 'invoice',
+      render: (_, order) => (
+        <Button
+          type="text"
+          icon={<PrinterOutlined />}
+          title="Tải hóa đơn PDF"
+          onClick={() => handleExportInvoice(order)}
+        >
+          PDF
+        </Button>
+      ),
+    },
     ...(canManageOrders
       ? [{
         title: 'Update Status',
@@ -225,6 +264,14 @@ function Orders() {
           <Typography.Title level={1}>Orders</Typography.Title>
           <Typography.Paragraph>Review and manage customer orders.</Typography.Paragraph>
         </div>
+        <Button
+          type="primary"
+          icon={<FileExcelOutlined />}
+          loading={exportingExcel}
+          onClick={handleExportExcel}
+        >
+          Xuất Báo Cáo Excel
+        </Button>
       </section>
       {loadError && (
         <Alert
@@ -293,7 +340,14 @@ function Orders() {
         title={`Order ${selectedOrder?.orderCode || ''}`}
         open={Boolean(selectedOrder)}
         onCancel={() => setSelectedOrder(null)}
-        footer={<Button onClick={() => setSelectedOrder(null)}>Close</Button>}
+        footer={[
+          <Button key="invoice" icon={<PrinterOutlined />} onClick={() => handleExportInvoice(selectedOrder)}>
+            In / Tải Hóa Đơn PDF
+          </Button>,
+          <Button key="close" type="primary" onClick={() => setSelectedOrder(null)}>
+            Đóng
+          </Button>,
+        ]}
         width={800}
       >
         {selectedOrder && (

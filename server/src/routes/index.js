@@ -23,6 +23,7 @@ const securityRoutes = require('./security.routes');
 const inventoryRoutes = require('./inventory.routes');
 const userRoutes = require('./user.routes');
 const analyticsRoutes = require('./analytics.routes');
+const reportRoutes = require('./report.routes');
 
 const router = express.Router();
 
@@ -40,5 +41,6 @@ router.use('/security', securityRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/users', userRoutes);
 router.use('/analytics', analyticsRoutes);
+router.use('/reports', reportRoutes);
 
 module.exports = router;

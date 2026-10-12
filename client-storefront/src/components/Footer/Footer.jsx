@@ -8,9 +8,9 @@ function Footer() {
         <div className="footer-intro">
           <Link className="brand footer-brand" to="/">
             <span className="brand-mark">N</span>
-            <span>NovaMart</span>
+            <span>Nova Fashion</span>
           </Link>
-          <p>Những lựa chọn đẹp và hữu ích cho một cuộc sống có gu.</p>
+          <p>Cửa hàng thời trang & quần áo chuẩn form, chất liệu cao cấp.</p>
         </div>
         <div>
           <h2>Khám phá</h2>
@@ -26,14 +26,14 @@ function Footer() {
         </div>
         <div id="contact" className="footer-contact">
           <h2>Liên hệ</h2>
-          <a href="mailto:hello@novamart.vn">hello@novamart.vn</a>
+          <a href="mailto:support@novafashion.vn">support@novafashion.vn</a>
           <a href="tel:19001234">1900 1234</a>
           <span>Thứ 2 - Chủ nhật, 9:00 - 21:00</span>
         </div>
       </div>
       <div className="footer-bottom">
-        <span>© 2026 NovaMart. All rights reserved.</span>
-        <span>Made for everyday living.</span>
+        <span>© 2026 Nova Fashion. All rights reserved.</span>
+        <span>Made for everyday style.</span>
       </div>
     </footer>
   );
