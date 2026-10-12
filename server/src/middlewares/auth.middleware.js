@@ -31,6 +31,28 @@ const protect = catchAsync(async (req, res, next) => {
   return next();
 });
 
+const optionalProtect = catchAsync(async (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const accessToken = authorization.slice(7);
+  try {
+    const payload = jwt.verify(accessToken, env.JWT_SECRET);
+    if (payload.type === 'access') {
+      const user = await User.findById(payload.sub);
+      if (user && user.isActive !== false) {
+        req.user = user;
+      }
+    }
+  } catch {
+    // Non-blocking: continue as guest if token is expired or invalid
+  }
+
+  return next();
+});
+
 const checkRole = (...roles) => (req, res, next) => {
   if (!req.user || !roles.includes(req.user.role)) {
     const error = new Error('Bạn không có quyền thực hiện thao tác này');
@@ -41,4 +63,4 @@ const checkRole = (...roles) => (req, res, next) => {
   return next();
 };
 
-module.exports = { protect, checkRole };
+module.exports = { protect, optionalProtect, checkRole };

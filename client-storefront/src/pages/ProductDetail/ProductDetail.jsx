@@ -5,6 +5,7 @@ import Footer from '../../components/Footer/Footer.jsx';
 import ProductReviews from '../../components/ProductReviews/ProductReviews.jsx';
 import RelatedProducts from '../../components/RelatedProducts/RelatedProducts.jsx';
 import { useCart } from '../../context/CartContext.jsx';
+import { useWishlist } from '../../context/WishlistContext.jsx';
 import { getProductById } from '../../services/productService.js';
 import { formatCurrency, PRODUCT_PLACEHOLDER_IMAGE, resolveProductPrice } from '../../utils/currency.js';
 import './ProductDetail.css';
@@ -16,6 +17,7 @@ function uniqueValues(variants, key) {
 function ProductDetail() {
   const { id } = useParams();
   const { addItem, error: cartError, errorAnnounced } = useCart();
+  const { isWishlisted, toggleWishlist } = useWishlist();
   const [product, setProduct] = useState(null);
   const [isShowingCachedProduct, setIsShowingCachedProduct] = useState(false);
   const [status, setStatus] = useState('loading');
@@ -143,7 +145,29 @@ function ProductDetail() {
                 {hasVariants && selectedVariant && <div className="product-variant-meta">{selectedVariant.sku && <span>SKU: {selectedVariant.sku}</span>}<span>{stock > 0 ? `Còn ${stock} sản phẩm` : 'Hết hàng'}</span></div>}
                 {!hasVariants && <p className="product-variant-meta">{stock > 0 ? `Còn ${stock} sản phẩm` : 'Hết hàng'}</p>}
                 <label className="product-detail-quantity">Số lượng<input type="number" min="1" max={Number.isFinite(stock) ? stock : undefined} step="1" value={quantity} onChange={(event) => { setQuantity(event.target.value); setSelectionError(''); }} /></label>
-                <button className="product-detail-add" type="button" onClick={addToCart} disabled={!canPurchase}>Thêm vào giỏ hàng</button>
+                <div className="product-detail-actions-row">
+                  <button className="product-detail-add" type="button" onClick={addToCart} disabled={!canPurchase}>Thêm vào giỏ hàng</button>
+                  <button
+                    className={`product-detail-wishlist-btn ${isWishlisted(product._id || product.id) ? 'is-liked' : ''}`}
+                    type="button"
+                    onClick={() => toggleWishlist(product)}
+                    aria-label={isWishlisted(product._id || product.id) ? 'Bỏ thích sản phẩm' : 'Thêm vào yêu thích'}
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill={isWishlisted(product._id || product.id) ? '#b84b39' : 'none'}
+                      stroke={isWishlisted(product._id || product.id) ? '#b84b39' : 'currentColor'}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                    <span>{isWishlisted(product._id || product.id) ? 'Đã yêu thích' : 'Yêu thích'}</span>
+                  </button>
+                </div>
                 {(selectionError || cartError) && <p className="product-detail-error" role={selectionError || !errorAnnounced ? 'alert' : undefined}>{selectionError || cartError}</p>}
               </div>
             </section>

@@ -9,6 +9,7 @@ import {
   StarOutlined,
   InboxOutlined,
   TeamOutlined,
+  HeartOutlined,
 } from '@ant-design/icons';
 import { Avatar, Button, Drawer, Grid, Layout, Menu, message, Typography } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
@@ -24,6 +25,7 @@ const menuItems = [
   { key: '/categories', icon: <FolderOpenOutlined />, label: 'Categories' },
   { key: '/orders', icon: <ShoppingOutlined />, label: 'Orders' },
   { key: '/inventory', icon: <InboxOutlined />, label: 'Inventory' },
+  { key: '/wishlist-analytics', icon: <HeartOutlined />, label: 'Sản phẩm yêu thích' },
   { key: '/users', icon: <TeamOutlined />, label: 'Users', adminOnly: true },
   { key: '/reviews', icon: <StarOutlined />, label: 'Đánh giá (Reviews)' },
 ];
@@ -34,6 +36,7 @@ const pageTitles = {
   '/categories': 'Categories',
   '/orders': 'Orders',
   '/inventory': 'Inventory',
+  '/wishlist-analytics': 'Thống kê Sản phẩm Yêu thích & Gợi ý',
   '/users': 'Users',
   '/reviews': 'Đánh giá & Phản hồi',
 };

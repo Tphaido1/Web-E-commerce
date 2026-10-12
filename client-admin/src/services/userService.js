@@ -13,4 +13,8 @@ export const userService = {
     const response = await api.patch(`/users/${id}`, values);
     return response.data.data;
   },
+  async getWishlistAnalytics(config = {}) {
+    const response = await api.get('/users/wishlist-analytics', config);
+    return response.data.data;
+  },
 };

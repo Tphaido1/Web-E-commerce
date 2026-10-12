@@ -1,9 +1,10 @@
 const Category = require('../models/Category.model');
+const Product = require('../models/Product.model');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
 
 /**
- * Lấy danh sách danh mục
+ * Lấy danh sách danh mục (kèm số lượng sản phẩm mỗi loại)
  * GET /api/v1/categories
  */
 const getAllCategories = catchAsync(async (req, res) => {
@@ -12,9 +13,27 @@ const getAllCategories = catchAsync(async (req, res) => {
     filter.isActive = true;
   }
 
-  const categories = await Category.find(filter).sort({ name: 1 });
-  return ApiResponse.success(res, 200, 'Lấy danh sách danh mục thành công', categories);
+  const categories = await Category.find(filter).sort({ name: 1 }).lean();
+
+  // Đếm số lượng sản phẩm thuộc mỗi danh mục
+  const counts = await Product.aggregate([
+    { $match: { isActive: { $ne: false } } },
+    { $group: { _id: '$category', count: { $sum: 1 } } },
+  ]);
+
+  const countMap = {};
+  for (const item of counts) {
+    if (item._id) countMap[item._id] = item.count;
+  }
+
+  const categoriesWithCounts = categories.map((cat) => ({
+    ...cat,
+    productCount: countMap[cat.name] || countMap[cat.slug] || countMap[String(cat._id)] || 0,
+  }));
+
+  return ApiResponse.success(res, 200, 'Lấy danh sách danh mục thành công', categoriesWithCounts);
 });
+
 
 /**
  * Lấy chi tiết danh mục theo ID hoặc Slug
