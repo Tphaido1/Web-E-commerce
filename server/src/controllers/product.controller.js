@@ -94,6 +94,8 @@ const getProducts = catchAsync(async (req, res) => {
     sortOption = { price: -1 };
   } else if (sort === 'rating') {
     sortOption = { ratingAverage: -1 };
+  } else if (sort === 'bestseller' || sort === 'popular') {
+    sortOption = { reviewCount: -1, ratingAverage: -1 };
   }
 
   // 5. Phân trang

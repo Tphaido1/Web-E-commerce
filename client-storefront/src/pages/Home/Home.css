@@ -1,17 +1,374 @@
-.collection-section { max-width: 1180px; margin: 0 auto; padding: 5rem 1.5rem 6rem; }
-.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 2rem; }
-.section-kicker { margin: 0 0 0.6rem; color: var(--coral); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
-.section-heading h2 { margin: 0; font-family: var(--display-font); font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1; }
-.section-heading > a { color: var(--ink); font-size: 0.85rem; font-weight: 800; }
-.section-heading > a:hover { color: var(--coral); }
-.collection-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-.collection-card { position: relative; display: flex; min-height: 230px; flex-direction: column; justify-content: end; padding: 1.5rem; overflow: hidden; color: var(--ink); }
-.collection-card::before { position: absolute; top: -30px; right: -25px; width: 150px; height: 150px; border: 1px solid rgba(24, 46, 40, 0.15); border-radius: 50%; content: ''; }
-.collection-card span:first-child { position: relative; margin-bottom: 0.55rem; color: rgba(24, 46, 40, 0.62); font-size: 0.75rem; }
-.collection-card h3 { position: relative; margin: 0; font-family: var(--display-font); font-size: 1.8rem; }
-.card-arrow { position: absolute; right: 1.5rem; bottom: 1.5rem; font-size: 1.25rem; }
-.collection-card:hover .card-arrow { transform: translateX(4px); }
-.sage { background: #c6d5c4; }
-.sand { background: #ecd0a8; }
-.rose { background: #e6b9ae; }
-@media (max-width: 767px) { .collection-section { padding: 3.5rem 1rem 4rem; } .section-heading { align-items: start; flex-direction: column; } .collection-grid { grid-template-columns: 1fr; } .collection-card { min-height: 180px; } }
+/* =========================================================================
+ * HOME PAGE STYLING - NOVA FASHION
+ * ========================================================================= */
+
+.home-container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* 1. Cam kết & Giá trị thương hiệu */
+.home-trust-section {
+  background: #fff;
+  border-bottom: 1px solid var(--line, #e2ded7);
+  padding: 2.5rem 0;
+}
+
+.home-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+.home-trust-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.home-trust-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.home-trust-title {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ink, #182e28);
+}
+
+.home-trust-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted, #6f7775);
+  line-height: 1.45;
+}
+
+/* 2. Tiêu đề các phân đoạn */
+.section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.section-kicker {
+  margin: 0 0 0.4rem;
+  color: var(--coral, #b84b39);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-family: var(--display-font, 'Outfit', sans-serif);
+  font-size: clamp(2rem, 3.8vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--ink, #182e28);
+}
+
+.section-subtext {
+  margin: 0.5rem 0 0;
+  color: var(--muted, #6f7775);
+  font-size: 0.95rem;
+  max-width: 600px;
+}
+
+.section-view-all {
+  color: var(--ink, #182e28);
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.section-view-all:hover {
+  color: var(--coral, #b84b39);
+  transform: translateX(3px);
+}
+
+/* 3. Phân đoạn Sản phẩm bán chạy (Best Sellers) */
+.best-sellers-section {
+  padding: 4.5rem 0 3.5rem;
+  background: var(--paper, #fdfbf7);
+}
+
+.best-sellers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+/* Tinh chỉnh ProductCard khi hiển thị trong Best Sellers Grid */
+.best-sellers-grid .product-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--line, #e2ded7);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.best-sellers-grid .product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(24, 46, 40, 0.08);
+}
+
+.best-sellers-grid .product-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.best-sellers-grid .product-card-actions {
+  margin-top: auto;
+}
+
+/* 4. Phân đoạn Danh mục thời trang tại Home */
+.home-categories-section {
+  padding: 4rem 0 5rem;
+  background: #fff;
+  border-top: 1px solid var(--line, #e2ded7);
+}
+
+.home-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.home-cat-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--line, #e2ded7);
+  border-radius: 12px;
+  overflow: hidden;
+  color: var(--ink, #182e28);
+  text-decoration: none;
+  box-shadow: 0 4px 18px rgba(24, 46, 40, 0.04);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.home-cat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(24, 46, 40, 0.09);
+  border-color: rgba(184, 75, 57, 0.35);
+}
+
+.home-cat-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  background: #f0ebe4;
+}
+
+.home-cat-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.35s ease;
+}
+
+.home-cat-card:hover .home-cat-img-wrap img {
+  transform: scale(1.05);
+}
+
+.home-cat-count {
+  position: absolute;
+  bottom: 0.8rem;
+  right: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  background: rgba(24, 46, 40, 0.82);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  backdrop-filter: blur(4px);
+}
+
+.home-cat-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 1.25rem;
+}
+
+.home-cat-name {
+  margin: 0 0 0.4rem;
+  font-family: var(--display-font, 'Outfit', sans-serif);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink, #182e28);
+  line-height: 1.25;
+}
+
+.home-cat-desc {
+  margin: 0 0 0.8rem;
+  font-size: 0.82rem;
+  color: var(--muted, #6f7775);
+  line-height: 1.45;
+  flex: 1;
+}
+
+.home-cat-link {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--coral, #b84b39);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: gap 0.2s ease;
+}
+
+.home-cat-card:hover .home-cat-link {
+  gap: 0.5rem;
+}
+
+/* 5. Banner kêu gọi hành động dẫn tới /categories */
+.category-cta-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  background: linear-gradient(135deg, #182e28 0%, #25443c 100%);
+  color: #fff;
+  padding: 2.2rem 2.5rem;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(24, 46, 40, 0.15);
+}
+
+.category-cta-tag {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background: rgba(230, 185, 174, 0.2);
+  border: 1px solid rgba(230, 185, 174, 0.4);
+  color: #f7d2cb;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.5rem;
+}
+
+.category-cta-text h3 {
+  margin: 0 0 0.4rem;
+  font-family: var(--display-font, 'Outfit', sans-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.category-cta-text p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  max-width: 620px;
+}
+
+.category-cta-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.95rem 1.6rem;
+  background: var(--coral, #b84b39);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.category-cta-button:hover {
+  background: #9d392f;
+  transform: translateY(-2px);
+}
+
+/* 6. Loading state */
+.home-state-box {
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--line, #e2ded7);
+  border-radius: 8px;
+  margin: 1.5rem 0;
+}
+
+.home-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(24, 46, 40, 0.15);
+  border-top-color: var(--coral, #b84b39);
+  border-radius: 50%;
+  animation: home-spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes home-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 7. Responsive Styles */
+@media (max-width: 1024px) {
+  .best-sellers-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .home-trust-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-trust-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  .section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .best-sellers-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  .home-category-grid {
+    grid-template-columns: 1fr;
+  }
+  .category-cta-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.8rem;
+  }
+  .category-cta-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .best-sellers-grid {
+    grid-template-columns: 1fr;
+  }
+}

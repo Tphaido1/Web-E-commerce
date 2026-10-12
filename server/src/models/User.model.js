@@ -25,6 +25,31 @@ const userSchema = new mongoose.Schema(
       enum: ['admin', 'vendor', 'customer'],
       default: 'customer',
     },
+    name: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    address: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    avatar: {
+      type: String,
+      default: '',
+    },
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+      },
+    ],
     refreshToken: {
       type: String,
       select: false,

@@ -70,6 +70,16 @@ export function saveAuthSession(tokens, user, remembered = false, sessionId) {
   notifyAuthChange();
 }
 
+export function updateAuthUser(user) {
+  if (!user || typeof user !== 'object') return;
+  for (const { storage } of getStorages()) {
+    if (storage.getItem(ACCESS_TOKEN_KEY)) {
+      storage.setItem(USER_KEY, JSON.stringify(user));
+    }
+  }
+  notifyAuthChange();
+}
+
 export function clearAuthSession(expectedSessionId) {
   if (expectedSessionId && getAuthSession()?.sessionId !== expectedSessionId) return;
   for (const { storage } of getStorages()) {

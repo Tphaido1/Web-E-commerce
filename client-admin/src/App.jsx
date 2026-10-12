@@ -14,6 +14,7 @@ const ProductEditor = lazy(() => import('./pages/ProductEditor.jsx'));
 const Reviews = lazy(() => import('./pages/Reviews.jsx'));
 const Inventory = lazy(() => import('./pages/Inventory.jsx'));
 const Users = lazy(() => import('./pages/Users.jsx'));
+const WishlistAnalytics = lazy(() => import('./pages/WishlistAnalytics.jsx'));
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
             <Route path="/orders" element={<Orders />} />
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/inventory" element={<Inventory />} />
+            <Route path="/wishlist-analytics" element={<WishlistAnalytics />} />
             <Route path="/users" element={<Users />} />
           </Route>
         </Route>

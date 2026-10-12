@@ -1,193 +1,545 @@
-.site-header {
+/* =========================================================================
+ * ELISE-STYLE LUXURY HEADER & SLIDE-IN MENU DRAWER
+ * ========================================================================= */
+
+.elise-header {
   position: sticky;
   top: 0;
-  z-index: 10;
-  background: rgba(255, 252, 247, 0.94);
-  border-bottom: 1px solid var(--line);
-  backdrop-filter: blur(12px);
+  z-index: 990;
+  background: #ffffff;
+  border-bottom: 1px solid #ebe7e0;
+  box-shadow: 0 2px 14px rgba(24, 46, 40, 0.04);
 }
 
-.header-inner {
+.elise-header-inner {
   display: flex;
   align-items: center;
-  gap: 2rem;
-  max-width: 1180px;
-  min-height: 76px;
+  justify-content: space-between;
+  max-width: 1440px;
+  min-height: 72px;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 0 2rem;
+  gap: 1.5rem;
 }
 
-.brand {
+/* 1. KHỐI TRÁI: HAMBURGER & LOGO THỜI TRANG */
+.elise-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-shrink: 0;
+}
+
+.elise-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--ink, #182e28);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.elise-menu-trigger:hover {
+  color: var(--coral, #b84b39);
+  transform: scale(1.06);
+}
+
+.elise-brand {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
-  color: var(--ink);
-  font-family: var(--display-font);
-  font-size: 1.25rem;
+  text-decoration: none;
+  color: var(--ink, #182e28);
+  transition: opacity 0.2s ease;
+}
+
+.elise-brand:hover {
+  opacity: 0.85;
+}
+
+.elise-brand-rings {
+  color: #c59b63; /* Màu vàng kim sang trọng của biểu tượng nhẫn đôi */
+  flex-shrink: 0;
+}
+
+.elise-brand-text {
+  font-family: var(--display-font, 'Outfit', 'Montserrat', sans-serif);
+  font-size: 1.35rem;
   font-weight: 800;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink, #182e28);
+}
+
+/* 2. KHỐI GIỮA: TÌM KIẾM TỐI GIẢN (TÌM KIẾM ________ 🔍) */
+.elise-header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  max-width: 520px;
+  margin: 0 1rem;
+}
+
+.elise-search-form {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+}
+
+.elise-search-label {
+  font-family: var(--display-font, 'Outfit', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--ink, #182e28);
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
-.brand-mark {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  color: #fff;
-  background: var(--coral);
-  border-radius: 50%;
-  font-size: 1rem;
-}
-
-.main-nav {
+.elise-search-input-wrap {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  margin-right: auto;
+  flex: 1;
+  border-bottom: 1.8px solid var(--ink, #182e28);
+  padding-bottom: 2px;
 }
 
-.main-nav a,
-.account-link {
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.main-nav a:hover,
-.account-link:hover {
-  color: var(--coral);
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  width: 190px;
-  padding: 0.55rem 0.7rem;
-  color: var(--muted);
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  margin: 0;
-}
-.header-search-submit { padding: 0; color: var(--muted); background: transparent; border: 0; cursor: pointer; font: inherit; }
-
-.search-icon {
-  font-size: 1.25rem;
-  line-height: 1;
-  transform: rotate(-20deg);
-}
-
-.search-box input {
+.elise-search-input-wrap input {
   width: 100%;
-  color: var(--ink);
-  background: transparent;
   border: 0;
   outline: 0;
-  font: inherit;
-  font-size: 0.82rem;
+  background: transparent;
+  color: var(--ink, #182e28);
+  font-size: 0.88rem;
+  padding: 0.3rem 2rem 0.3rem 0.4rem;
+  font-family: inherit;
 }
 
-.cart-link {
+.elise-search-input-wrap input::placeholder {
+  color: rgba(24, 46, 40, 0.4);
+}
+
+.elise-search-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--ink, #182e28);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.elise-search-btn:hover {
+  color: var(--coral, #b84b39);
+  transform: translateY(-50%) scale(1.12);
+}
+
+/* 3. KHỐI PHẢI: GỌI NGAY - TÀI KHOẢN - GIỎ HÀNG - YÊU THÍCH */
+.elise-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+  flex-shrink: 0;
+}
+
+.elise-action-item {
+  position: relative;
+}
+
+.elise-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--ink, #182e28);
+  text-decoration: none;
+  padding: 0.4rem 0.2rem;
+  font-family: inherit;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.elise-action-btn:hover {
+  color: var(--coral, #b84b39);
+}
+
+.elise-action-text {
+  font-family: var(--display-font, 'Outfit', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.elise-icon-badge-wrap {
   position: relative;
   display: inline-flex;
   align-items: center;
-  color: var(--ink);
-  padding: 0;
-  font-size: 1.15rem;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  font-weight: 800;
-  text-transform: uppercase;
+  justify-content: center;
 }
 
-.cart-badge {
+.elise-badge {
   position: absolute;
-  top: -10px;
-  right: -11px;
+  top: -8px;
+  right: -9px;
   display: grid;
+  place-items: center;
   width: 17px;
   height: 17px;
-  place-items: center;
-  color: #fff;
-  background: var(--coral);
   border-radius: 50%;
+  background: var(--ink, #182e28);
+  color: #fff;
   font-size: 0.65rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
-.cart-icon { line-height: 1; }
+/* Popover cho Hotline & Tài Khoản */
+.elise-popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--line, #e2ded7);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(24, 46, 40, 0.12);
+  padding: 1.2rem;
+  min-width: 220px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  animation: elise-popdown 0.2s ease-out;
+}
 
-.account-link { white-space: nowrap; }
-button.account-link { padding: 0; color: var(--muted); background: transparent; border: 0; cursor: pointer; font: inherit; font-size: 0.9rem; font-weight: 700; }
-button.account-link:hover { color: var(--coral); }
-.account-name { max-width: 150px; overflow: hidden; color: var(--ink); font-size: 0.82rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.header-auth-error { margin: 0; padding: 0.5rem 1.5rem; color: #9d392f; background: #fce9e5; font-size: 0.8rem; text-align: center; }
-.mobile-account-controls { display: none; }
+@keyframes elise-popdown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-.menu-toggle {
-  display: none;
-  padding: 0.35rem;
+.popover-title {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted, #6f7775);
+}
+
+.popover-phone {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--coral, #b84b39);
+  text-decoration: none;
+}
+
+.popover-time {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted, #6f7775);
+}
+
+.account-popover-info {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid #f0ece5;
+}
+
+.account-popover-info strong {
+  font-size: 0.85rem;
+  color: var(--ink, #182e28);
+}
+
+.account-popover-info span {
+  font-size: 0.78rem;
+  color: var(--muted, #6f7775);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.elise-account-popover a,
+.elise-account-popover button {
+  padding: 0.4rem 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink, #182e28);
+  text-decoration: none;
   background: transparent;
   border: 0;
+  text-align: left;
   cursor: pointer;
 }
 
-.menu-toggle span {
+.elise-account-popover a:hover,
+.elise-account-popover button:hover {
+  color: var(--coral, #b84b39);
+}
+
+.elise-auth-error {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  background: #fce9e5;
+  color: #9d392f;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* =========================================================================
+ * 4. SIDE MENU DRAWER (HÌNH 1) - TRƯỢT TỪ TRÁI RA
+ * ========================================================================= */
+.elise-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(24, 46, 40, 0.45);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.elise-drawer-backdrop.is-visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.elise-side-drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(380px, 86vw);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.15);
+  transform: translateX(-100%);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+}
+
+.elise-drawer-backdrop.is-visible .elise-side-drawer {
+  transform: translateX(0);
+}
+
+/* Header bên trong Drawer */
+.elise-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.8rem;
+  border-bottom: 1px solid #f0ece5;
+}
+
+.elise-drawer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  color: var(--ink, #182e28);
+}
+
+.elise-drawer-brand svg {
+  color: #c59b63;
+}
+
+.elise-drawer-brand span {
+  font-family: var(--display-font, 'Outfit', sans-serif);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--ink, #182e28);
+}
+
+.elise-drawer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 0;
+  font-size: 1.35rem;
+  cursor: pointer;
+  color: var(--ink, #182e28);
+  border-radius: 50%;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.elise-drawer-close:hover {
+  background-color: #f3efe9;
+  transform: rotate(90deg);
+}
+
+/* Danh sách menu điều hướng trong Drawer (Hình 1) */
+.elise-drawer-nav {
+  flex: 1;
+  padding: 1rem 0;
+}
+
+.elise-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.elise-menu-item {
+  border-bottom: 1px solid rgba(240, 236, 229, 0.5);
+}
+
+.elise-menu-item > a,
+.elise-sub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.95rem 1.8rem;
+  font-family: var(--display-font, 'Outfit', sans-serif);
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--ink, #182e28);
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease, padding-left 0.2s ease;
+}
+
+.elise-menu-item > a:hover,
+.elise-sub-header:hover {
+  color: var(--coral, #b84b39);
+  background-color: #fbf9f6;
+  padding-left: 2.1rem;
+}
+
+.elise-chevron {
+  font-size: 0.9rem;
+  color: var(--muted, #6f7775);
+  transition: transform 0.2s ease;
+}
+
+/* Accordion danh mục con (Đầm, Áo, Quần...) */
+.elise-sub-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0.2rem 1.8rem 0.8rem 2.5rem;
+  background: #fbf9f6;
+  border-left: 2px solid var(--coral, #b84b39);
+  margin-left: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.elise-sub-menu li {
+  margin: 0.35rem 0;
+}
+
+.elise-sub-menu a {
   display: block;
-  width: 22px;
-  height: 2px;
-  margin: 4px 0;
-  background: var(--ink);
-}
-.menu-toggle { min-width: 44px; min-height: 44px; }
-.cart-badge { pointer-events: none; }
-
-@media (max-width: 1050px) {
-  .header-inner { gap: 1.25rem; }
-  .account-name { display: none; }
-  .search-box { width: 160px; }
-  .header-actions { gap: .7rem; }
+  padding: 0.35rem 0;
+  font-family: var(--display-font, 'Outfit', sans-serif);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(24, 46, 40, 0.82);
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
 }
 
-@media (max-width: 830px) {
-  .header-inner { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 56px 52px; column-gap: .75rem; row-gap: .25rem; min-height: 116px; padding: 0 1rem 8px; }
-  .brand { grid-column: 1; grid-row: 1; }
-  .menu-toggle { display: block; grid-column: 2; grid-row: 1; width: 44px; height: 44px; }
-  .header-actions { grid-column: 1 / -1; grid-row: 2; display: flex; width: 100%; gap: .65rem; }
-  .search-box { position: static; flex: 1; width: auto; min-width: 0; min-height: 44px; }
-  .search-box input { min-width: 0; }
-  .header-search-submit { min-width: 32px; min-height: 32px; }
-  .header-actions > .account-name,
-  .header-actions > .account-link { display: none; }
-  .cart-link { flex: 0 0 44px; justify-content: center; min-height: 44px; }
-  .main-nav {
-    position: absolute;
-    top: 116px;
-    left: 0;
-    right: 0;
-    display: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding: 0.5rem 1rem 1rem;
-    background: var(--paper);
-    border-bottom: 1px solid var(--line);
-    box-shadow: 0 12px 24px rgba(24, 46, 40, .12);
+.elise-sub-menu a:hover {
+  color: var(--coral, #b84b39);
+  transform: translateX(4px);
+}
+
+.highlight-categories {
+  color: var(--coral, #b84b39) !important;
+}
+
+.arrow-right {
+  font-size: 0.85rem;
+  color: var(--muted, #6f7775);
+}
+
+.sale-item {
+  color: #c93b2b !important;
+}
+
+/* Footer chân trang trong Drawer */
+.elise-drawer-footer {
+  margin-top: auto;
+  padding: 1.4rem 1.8rem;
+  background: #faf8f5;
+  border-top: 1px solid #f0ece5;
+}
+
+.elise-social-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.elise-social-links a {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--ink, #182e28);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.elise-social-links a:hover {
+  color: var(--coral, #b84b39);
+}
+
+/* =========================================================================
+ * 5. RESPONSIVE BREAKPOINTS
+ * ========================================================================= */
+@media (max-width: 1024px) {
+  .elise-header-inner {
+    padding: 0 1.25rem;
+    gap: 1rem;
   }
-  .main-nav.is-open { display: flex; max-height: calc(100dvh - 116px); overflow-y: auto; }
-  .main-nav a { min-height: 44px; padding: 0.75rem 0; border-bottom: 1px solid var(--line); }
-  .main-nav a:last-child { border-bottom: 0; }
-  .mobile-account-controls { display: grid; gap: .25rem; padding-top: .4rem; border-top: 1px solid var(--line); }
-  .mobile-account-controls a,
-  .mobile-account-controls button { min-height: 44px; padding: .75rem 0; color: var(--muted); background: transparent; border: 0; border-bottom: 1px solid var(--line); cursor: pointer; font: inherit; font-size: .9rem; font-weight: 700; text-align: left; }
-  .mobile-account-controls button:last-child,
-  .mobile-account-controls a:last-child { border-bottom: 0; }
+  .elise-header-center {
+    max-width: 380px;
+    margin: 0 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .elise-header-inner {
+    padding: 0 1rem;
+    min-height: 64px;
+  }
+  .elise-brand-text {
+    font-size: 1.15rem;
+    letter-spacing: 0.1em;
+  }
+  .elise-header-center {
+    display: none; /* Ẩn ô tìm kiếm trên header ở mobile, người dùng tìm kiếm từ menu hoặc trang sản phẩm */
+  }
+  .elise-action-text {
+    display: none; /* Ẩn chữ 'Gọi Ngay', 'Tài Khoản', chỉ giữ lại icon để tiết kiệm diện tích */
+  }
+  .elise-header-right {
+    gap: 1.1rem;
+  }
 }

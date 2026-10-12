@@ -33,3 +33,43 @@
 .product-variant-fields select, .product-variant-sku select, .product-detail-quantity input { min-height: 48px; font-size: 16px; }
 .product-detail-error, .product-detail-success { margin: .75rem 0; line-height: 1.5; }
 .product-detail-state button, .product-detail-state a { min-height: 44px; padding: .7rem 1rem; }
+
+.product-detail-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.product-detail-actions-row .product-detail-add {
+  flex: 1;
+}
+
+.product-detail-wishlist-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.8rem 1.4rem;
+  background: #ffffff;
+  border: 1.5px solid var(--line, #e2ded7);
+  color: var(--ink, #182e28);
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.product-detail-wishlist-btn:hover {
+  border-color: var(--coral, #b84b39);
+  color: var(--coral, #b84b39);
+}
+
+.product-detail-wishlist-btn.is-liked {
+  border-color: var(--coral, #b84b39);
+  color: var(--coral, #b84b39);
+  background: #fdf5f3;
+}
+

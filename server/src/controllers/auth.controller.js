@@ -28,6 +28,10 @@ const sanitizeUser = (user) => ({
   id: user._id,
   email: user.email,
   role: user.role,
+  name: user.name || '',
+  phone: user.phone || '',
+  address: user.address || '',
+  wishlist: user.wishlist || [],
 });
 
 // bcrypt only considers 72 bytes: digest the entire JWT before hashing/comparing.
@@ -62,7 +66,7 @@ const invalidCredentialsError = () => {
 };
 
 exports.register = async (req, res) => {
-  const { email, password } = req.body || {};
+  const { email, password, name, phone, address } = req.body || {};
 
   if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
     return ApiResponse.error(res, 400, 'Vui lòng nhập email và mật khẩu');
@@ -74,7 +78,13 @@ exports.register = async (req, res) => {
     return ApiResponse.error(res, 409, 'Email đã được sử dụng');
   }
 
-  const user = await User.create({ email: normalizedEmail, password });
+  const user = await User.create({
+    email: normalizedEmail,
+    password,
+    ...(typeof name === 'string' && name.trim() && { name: name.trim() }),
+    ...(typeof phone === 'string' && phone.trim() && { phone: phone.trim() }),
+    ...(typeof address === 'string' && address.trim() && { address: address.trim() }),
+  });
   const tokens = await issueTokens(user);
 
   return ApiResponse.success(res, 201, 'Đăng ký thành công', {
