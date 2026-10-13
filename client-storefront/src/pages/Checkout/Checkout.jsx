@@ -175,6 +175,21 @@ function Checkout() {
     }
   };
 
+  const clearPendingPayment = () => {
+    const nextDraft = {
+      ...draft,
+      pendingVnpayOrderId: '',
+      pendingVnpayAttemptStarted: false,
+      idempotency: null,
+    };
+    persistDraft(nextDraft);
+    setDraft(nextDraft);
+    setPaymentRecoveryOrder(null);
+    setPaymentRecoveryError('');
+    setCheckoutError('');
+    setCheckoutErrorFromRequest(false);
+  };
+
   const updateDraft = (updates) => {
     setDraft((current) => {
       const next = { ...current, ...updates };
@@ -326,19 +341,35 @@ function Checkout() {
             {isResumingPayment ? (
               <><h2>Đang kiểm tra trạng thái thanh toán...</h2><p>Đơn hàng đã được tạo. Vui lòng chờ xác nhận trước khi thanh toán lại.</p></>
             ) : paymentRecoveryOrder?.status === 'cancelled' ? (
-              <><p className="section-kicker">Đơn hàng đã hủy</p><h2>Không thể tiếp tục thanh toán cho đơn hàng này.</h2><p>Mã đơn hàng: <strong>{paymentRecoveryOrder.orderCode}</strong></p><Link to={`/orders/${paymentRecoveryOrder._id}`}>Xem chi tiết đơn hàng</Link></>
+              <>
+                <p className="section-kicker">Đơn hàng đã hủy</p>
+                <h2>Không thể tiếp tục thanh toán cho đơn hàng này.</h2>
+                <p>Mã đơn hàng: <strong>{paymentRecoveryOrder.orderCode}</strong></p>
+                <div className="checkout-payment-recovery-actions">
+                  <button className="checkout-submit" type="button" onClick={clearPendingPayment}>Tạo đơn hàng mới</button>
+                  <Link to={`/orders/${paymentRecoveryOrder._id}`}>Xem chi tiết đơn hàng</Link>
+                </div>
+              </>
             ) : paymentRecoveryOrder?.paymentStatus === 'paid' ? (
               <>
-                <p className="section-kicker">Thanh toán thành công</p><h2>Đơn hàng đã được thanh toán.</h2>
+                <p className="section-kicker">Thanh toán thành công</p>
+                <h2>Đơn hàng đã được thanh toán.</h2>
                 <p>Mã đơn hàng: <strong>{paymentRecoveryOrder.orderCode}</strong></p>
                 <p>Tổng thanh toán: <strong>{formatCurrency(paymentRecoveryOrder.finalAmount)}</strong></p>
-                <Link className="checkout-primary-link" to={`/orders/${paymentRecoveryOrder._id}`}>Xem chi tiết đơn hàng</Link>
+                <div className="checkout-payment-recovery-actions">
+                  <Link className="checkout-primary-link" to={`/orders/${paymentRecoveryOrder._id}`}>Xem chi tiết đơn hàng</Link>
+                  <button className="checkout-secondary-button" type="button" onClick={clearPendingPayment}>Tiếp tục mua sắm / Tạo đơn mới</button>
+                </div>
               </>
             ) : paymentRecoveryOrder?.paymentStatus === 'refunded' ? (
               <>
-                <p className="section-kicker">Đã hoàn tiền</p><h2>Khoản thanh toán cho đơn hàng đã được hoàn lại.</h2>
+                <p className="section-kicker">Đã hoàn tiền</p>
+                <h2>Khoản thanh toán cho đơn hàng đã được hoàn lại.</h2>
                 <p>Mã đơn hàng: <strong>{paymentRecoveryOrder.orderCode}</strong></p>
-                <Link to={`/orders/${paymentRecoveryOrder._id}`}>Xem chi tiết đơn hàng</Link>
+                <div className="checkout-payment-recovery-actions">
+                  <button className="checkout-submit" type="button" onClick={clearPendingPayment}>Tạo đơn hàng mới</button>
+                  <Link to={`/orders/${paymentRecoveryOrder._id}`}>Xem chi tiết đơn hàng</Link>
+                </div>
               </>
             ) : paymentRecoveryOrder ? (
               <>
@@ -348,22 +379,40 @@ function Checkout() {
                 <p>Trạng thái thanh toán: <strong>{paymentRecoveryOrder.paymentStatus}</strong></p>
                 {paymentRecoveryError && <p className="checkout-error" role="alert">{paymentRecoveryError}</p>}
                 {checkoutError && <p className="checkout-error" role={checkoutErrorFromRequest ? undefined : 'alert'}>{checkoutError}</p>}
-                {paymentRecoveryOrder.status !== 'cancelled' && paymentRecoveryOrder.paymentStatus === 'failed' && (
-                  <button className="checkout-submit" type="button" onClick={() => redirectToVNPay(paymentRecoveryOrder._id)} disabled={isSubmitting}>
-                    {isSubmitting ? 'Đang kết nối VNPay...' : 'Thử thanh toán lại'}
+                <div className="checkout-payment-recovery-actions">
+                  {paymentRecoveryOrder.status !== 'cancelled' && paymentRecoveryOrder.paymentStatus === 'failed' && (
+                    <button className="checkout-submit" type="button" onClick={() => redirectToVNPay(paymentRecoveryOrder._id)} disabled={isSubmitting}>
+                      {isSubmitting ? 'Đang kết nối VNPay...' : 'Thử thanh toán lại'}
+                    </button>
+                  )}
+                  {paymentRecoveryOrder.status !== 'cancelled' && paymentRecoveryOrder.paymentStatus === 'unpaid' && !draft.pendingVnpayAttemptStarted && (
+                    <button className="checkout-submit" type="button" onClick={() => redirectToVNPay(paymentRecoveryOrder._id)} disabled={isSubmitting}>
+                      {isSubmitting ? 'Đang kết nối VNPay...' : 'Tiếp tục đến VNPay'}
+                    </button>
+                  )}
+                  <button className="checkout-secondary-button" type="button" onClick={clearPendingPayment}>
+                    Bỏ qua & Đặt đơn hàng mới
                   </button>
-                )}
-                {paymentRecoveryOrder.status !== 'cancelled' && paymentRecoveryOrder.paymentStatus === 'unpaid' && !draft.pendingVnpayAttemptStarted && (
-                  <button className="checkout-submit" type="button" onClick={() => redirectToVNPay(paymentRecoveryOrder._id)} disabled={isSubmitting}>
-                    {isSubmitting ? 'Đang kết nối VNPay...' : 'Tiếp tục đến VNPay'}
+                  <button className="checkout-secondary-button" type="button" onClick={refreshPendingPayment} disabled={isResumingPayment}>
+                    {isResumingPayment ? 'Đang kiểm tra...' : 'Kiểm tra lại trạng thái'}
                   </button>
+                  <Link to={`/orders/${paymentRecoveryOrder._id}`}>Xem chi tiết đơn hàng</Link>
+                </div>
+                {paymentRecoveryOrder.paymentStatus === 'unpaid' && draft.pendingVnpayAttemptStarted && (
+                  <p>Giao dịch đã được chuyển đến VNPay; hãy đợi xác nhận hoặc kiểm tra lại trạng thái trước khi thử lại.</p>
                 )}
-                {paymentRecoveryOrder.paymentStatus === 'unpaid' && draft.pendingVnpayAttemptStarted && <p>Giao dịch đã được chuyển đến VNPay; hãy đợi xác nhận hoặc kiểm tra lại trạng thái trước khi thử lại.</p>}
-                <button className="checkout-secondary-button" type="button" onClick={refreshPendingPayment} disabled={isResumingPayment}>Kiểm tra lại trạng thái</button>
-                <Link to={`/orders/${paymentRecoveryOrder._id}`}>Xem chi tiết đơn hàng</Link>
               </>
             ) : (
-              <><h2>Không thể khôi phục đơn hàng.</h2><p>{paymentRecoveryError || 'Không tải được trạng thái đơn hàng đã tạo.'}</p><Link to="/my-orders">Mở đơn hàng của tôi</Link></>
+              <>
+                <h2>Không thể khôi phục đơn hàng.</h2>
+                <p>{paymentRecoveryError || 'Không tải được trạng thái đơn hàng đã tạo.'}</p>
+                <div className="checkout-payment-recovery-actions">
+                  <button className="checkout-submit" type="button" onClick={clearPendingPayment}>
+                    Xóa phiên thanh toán cũ & Tạo đơn mới
+                  </button>
+                  <Link to="/my-orders">Mở đơn hàng của tôi</Link>
+                </div>
+              </>
             )}
           </section>
         ) : cartStatus === 'loading' ? (

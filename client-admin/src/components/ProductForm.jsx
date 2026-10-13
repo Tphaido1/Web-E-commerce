@@ -32,7 +32,7 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
       ));
       const productSku = String(form.getFieldValue('sku') || '').trim().toLowerCase();
       if (duplicate || (!isEditing && sku === productSku)) {
-        throw new Error('SKU must be unique within this product.');
+        throw new Error('Mã SKU phải là duy nhất trong sản phẩm này.');
       }
     },
   });
@@ -47,42 +47,42 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
         && String(variant?.color || '').trim().toLowerCase() === current.color.trim().toLowerCase()
         && String(variant?.size || '').trim().toLowerCase() === current.size.trim().toLowerCase()
       ));
-      if (duplicate) throw new Error('Color and size combination must be unique.');
+      if (duplicate) throw new Error('Sự kết hợp màu sắc và kích cỡ phải là duy nhất.');
     },
   });
 
   const variantColumns = (fields, remove) => [
     {
-      title: 'Color',
+      title: 'Màu sắc',
       key: 'color',
       render: (_, field) => (
         <Form.Item
           name={[field.name, 'color']}
-          rules={[{ required: true, whitespace: true, message: 'Color is required.' }, uniqueCombinationRule(field)]}
+          rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập màu sắc.' }, uniqueCombinationRule(field)]}
         >
           <Input placeholder="Trắng, Đen, Xanh..." />
         </Form.Item>
       ),
     },
     {
-      title: 'Size',
+      title: 'Kích cỡ',
       key: 'size',
       render: (_, field) => (
         <Form.Item
           name={[field.name, 'size']}
-          rules={[{ required: true, whitespace: true, message: 'Size is required.' }, uniqueCombinationRule(field)]}
+          rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập kích cỡ.' }, uniqueCombinationRule(field)]}
         >
           <Input placeholder="S, M, L, XL, 30, 31..." />
         </Form.Item>
       ),
     },
     {
-      title: 'Price',
+      title: 'Giá',
       key: 'price',
       render: (_, field) => (
         <Form.Item
           name={[field.name, 'price']}
-          rules={[{ required: true, type: 'number', min: 0, message: 'Enter a valid price.' }]}
+          rules={[{ required: true, type: 'number', min: 0, message: 'Vui lòng nhập mức giá hợp lệ.' }]}
         >
           <InputNumber min={0} style={{ width: '100%' }} />
         </Form.Item>
@@ -94,19 +94,19 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
       render: (_, field) => (
         <Form.Item
           name={[field.name, 'sku']}
-          rules={[{ required: true, whitespace: true, message: 'SKU is required.' }, uniqueVariantSkuRule(field)]}
+          rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập mã SKU.' }, uniqueVariantSkuRule(field)]}
         >
           <Input placeholder="CLOTH-TS-001-W-M" />
         </Form.Item>
       ),
     },
     {
-      title: 'Stock',
+      title: 'Tồn kho',
       key: 'stock',
       render: (_, field) => (
         <Form.Item
           name={[field.name, 'stock']}
-          rules={[{ required: true, type: 'number', min: 0, message: 'Enter a valid stock quantity.' }]}
+          rules={[{ required: true, type: 'number', min: 0, message: 'Vui lòng nhập số lượng tồn kho hợp lệ.' }]}
         >
           <InputNumber min={0} precision={0} disabled={hasExistingVariantStock(field)} style={{ width: '100%' }} />
         </Form.Item>
@@ -120,7 +120,7 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
           type="text"
           danger
           icon={<DeleteOutlined />}
-          aria-label={`Remove variant ${field.name + 1}`}
+          aria-label={`Xóa biến thể ${field.name + 1}`}
           disabled={fields.length === 1}
           onClick={() => remove(field.name)}
         />
@@ -129,14 +129,14 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
   ];
 
   const baseSkuRules = [
-    { required: true, whitespace: true, message: 'Inventory SKU is required.' },
+    { required: true, whitespace: true, message: 'Vui lòng nhập mã SKU sản phẩm.' },
     {
       validator: async (_, value) => {
         const sku = String(value || '').trim().toLowerCase();
         if (!sku) return;
         const variants = form.getFieldValue('variants') || [];
         if (variants.some((variant) => String(variant?.sku || '').trim().toLowerCase() === sku)) {
-          throw new Error('Inventory SKU must be unique from variant SKUs.');
+          throw new Error('Mã SKU sản phẩm không được trùng với mã SKU của các biến thể.');
         }
       },
     },
@@ -156,73 +156,57 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
         <Alert
           type="info"
           showIcon
-          message={<>Existing SKU stock is read-only here. Use <Typography.Link onClick={() => navigate('/inventory')}>Inventory</Typography.Link> to restock products. New variants can have initial stock.</>}
+          message={<>Tồn kho của các SKU hiện có không thể chỉnh sửa trực tiếp tại đây. Vui lòng vào trang <Typography.Link onClick={() => navigate('/inventory')}>Kho hàng</Typography.Link> để nhập thêm hàng. Các biến thể mới thêm có thể nhập số lượng ban đầu.</>}
           style={{ marginBottom: 16 }}
         />
       )}
       <Card className="form-section" variant="borderless">
-        <Typography.Text className="form-section-title">Basic information</Typography.Text>
+        <Typography.Text className="form-section-title">Thông tin cơ bản</Typography.Text>
         <div className="form-grid">
           <Form.Item
-            label="Product Name"
+            label="Tên sản phẩm"
             name="name"
-            rules={[{ required: true, whitespace: true, message: 'Product name is required.' }]}
+            rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập tên sản phẩm.' }]}
           >
             <Input placeholder="Tên sản phẩm (VD: Áo Thun Cotton Compact, Sơ Mi Oxford...)" />
           </Form.Item>
           {/* =========================================================================
            * PHẦN MỞ RỘNG (TẠM ẨN): CHỌN VENDOR CHO MÔ HÌNH MULTI-VENDOR
            * Trong mô hình Single Shop: Admin là chủ shop trực tiếp quản lý toàn bộ sản phẩm.
-           * {canAssignVendor && (
-           *   <Form.Item label="Product owner" name="vendor" help={vendorError || 'Leave Admin-managed for products without a Vendor owner.'} validateStatus={vendorError ? 'warning' : undefined}>
-           *     <Select
-           *       showSearch
-           *       filterOption={false}
-           *       onSearch={onVendorSearch}
-           *       loading={vendorLoading}
-           *       options={[
-           *         { value: '', label: 'Admin-managed' },
-           *         ...vendors.map((vendor) => ({ value: vendor._id, label: vendor.email })),
-           *         ...(initialValues?.vendor && !vendors.some((vendor) => vendor._id === initialValues.vendor)
-           *           ? [{ value: initialValues.vendor, label: `Assigned Vendor (${initialValues.vendor})` }] : []),
-           *       ]}
-           *     />
-           *   </Form.Item>
-           * )}
            * ========================================================================= */}
           <Form.Item name="vendor" hidden>
             <Input />
           </Form.Item>
           {!isEditing && (
-            <Form.Item label="Inventory SKU" name="sku" rules={baseSkuRules}>
+            <Form.Item label="Mã SKU sản phẩm" name="sku" rules={baseSkuRules}>
               <Input placeholder="CLOTH-TS-001" />
             </Form.Item>
           )}
           <Form.Item
-            label="Category"
+            label="Danh mục"
             name="category"
-            rules={[{ required: true, message: 'Category is required.' }]}
+            rules={[{ required: true, message: 'Vui lòng chọn danh mục.' }]}
           >
-            <Select options={categories.map((category) => ({ value: category.name, label: category.name }))} placeholder="Chọn danh mục quần áo" />
+            <Select options={categories.map((category) => ({ value: category.name, label: category.name }))} placeholder="Chọn danh mục thời trang" />
           </Form.Item>
           <Form.Item
-            label="Base Price"
+            label="Giá gốc"
             name="price"
-            rules={[{ required: true, type: 'number', min: 0.01, message: 'Enter a price greater than zero.' }]}
+            rules={[{ required: true, type: 'number', min: 0.01, message: 'Vui lòng nhập mức giá lớn hơn 0.' }]}
           >
             <InputNumber min={0.01} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item label="Sale Price" name="salePrice" rules={[{ type: 'number', min: 0, message: 'Sale price cannot be negative.' }]}>
+          <Form.Item label="Giá khuyến mãi" name="salePrice" rules={[{ type: 'number', min: 0, message: 'Giá khuyến mãi không được âm.' }]}>
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
-            label="Product Stock"
+            label="Tồn kho sản phẩm"
             name="stock"
-            rules={[{ required: true, type: 'number', min: 0, message: 'Enter a valid stock quantity.' }]}
+            rules={[{ required: true, type: 'number', min: 0, message: 'Vui lòng nhập số lượng tồn kho hợp lệ.' }]}
           >
             <InputNumber min={0} precision={0} disabled={isEditing} style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item label="Description" name="description" className="form-wide">
+          <Form.Item label="Mô tả sản phẩm" name="description" className="form-wide">
             <Input.TextArea rows={4} placeholder="Mô tả chất liệu vải, kiểu dáng form, độ co giãn, hướng dẫn chọn size và bảo quản..." />
           </Form.Item>
         </div>
@@ -238,10 +222,10 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
               ))}
               <div className="section-heading-row">
                 <div>
-                  <Typography.Text className="form-section-title">Product variants</Typography.Text>
-                  <Typography.Paragraph>Define color, size, SKU, price, and stock for each variant.</Typography.Paragraph>
+                  <Typography.Text className="form-section-title">Biến thể sản phẩm</Typography.Text>
+                  <Typography.Paragraph>Thiết lập màu sắc, kích cỡ, mã SKU, giá bán và số lượng tồn kho cho từng biến thể.</Typography.Paragraph>
                 </div>
-                <Button icon={<PlusOutlined />} onClick={() => add({ ...emptyVariant })}>Add Variant</Button>
+                <Button icon={<PlusOutlined />} onClick={() => add({ ...emptyVariant })}>Thêm biến thể</Button>
               </div>
               <Table
                 className="variant-table"
@@ -256,8 +240,8 @@ function ProductForm({ initialValues, categories, loading, saveError, onSubmit, 
         </Form.List>
       </Card>
       <div className="form-submit-row">
-        <Button onClick={() => navigate('/products')}>Cancel</Button>
-        <Button type="primary" htmlType="submit" loading={loading}>Save Product</Button>
+        <Button onClick={() => navigate('/products')}>Hủy</Button>
+        <Button type="primary" htmlType="submit" loading={loading}>Lưu sản phẩm</Button>
       </div>
     </Form>
   );

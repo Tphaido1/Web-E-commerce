@@ -50,10 +50,24 @@ app.use(
   })
 );
 
-// 2. CORS: chỉ cho phép 2 client (storefront & admin) gọi API
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  if (origin === env.CLIENT_URL || origin === env.ADMIN_URL) return true;
+  if (env.NODE_ENV !== 'production') {
+    return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  }
+  return false;
+};
+
+// 2. CORS: cho phép storefront & admin (hỗ trợ linh hoạt các port localhost trong môi trường development)
 app.use(
   cors({
-    origin: [env.CLIENT_URL, env.ADMIN_URL],
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Chặn bởi chính sách CORS'));
+    },
     credentials: true,
   })
 );

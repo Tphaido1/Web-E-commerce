@@ -12,7 +12,7 @@ function Cart() {
     <div className="storefront-page">
       <Header />
       <main className="cart-page">
-        <div className="cart-page-heading"><p className="section-kicker">NovaMart</p><h1>Giỏ hàng</h1></div>
+        <div className="cart-page-heading"><p className="section-kicker">Nova Fashion</p><h1>Giỏ hàng</h1></div>
         {error && <div className="cart-page-error" role={errorAnnounced ? undefined : 'alert'}><p>{error}</p><button type="button" onClick={reloadCart}>Thử tải lại</button></div>}
         {status === 'loading' ? (
           <section className="cart-page-empty" role="status"><h2>Đang tải giỏ hàng...</h2></section>

@@ -156,7 +156,7 @@ function WishlistAnalytics() {
       ),
     },
     {
-      title: 'Gợi ý tương đương (Cross-sell / Recommender)',
+      title: 'Gợi ý sản phẩm tương đương',
       key: 'equivalent',
       render: (_, record) => {
         const equivalents = record.equivalentProducts || [];
@@ -230,7 +230,7 @@ function WishlistAnalytics() {
             <Col xs={24} sm={12} lg={6}>
               <Card bordered={false} className="metric-card" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                 <Statistic
-                  title="Khách hàng có wishlist"
+                  title="Khách hàng lưu yêu thích"
                   value={metrics.totalUsersWithWishlist}
                   prefix={<TeamOutlined style={{ color: '#3d5a80', marginRight: 8 }} />}
                   suffix="người"

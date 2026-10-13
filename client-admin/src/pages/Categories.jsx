@@ -5,7 +5,7 @@ import { authService } from '../services/authService.js';
 import { categoryService } from '../services/categoryService.js';
 
 const getErrorMessage = (error) => (
-  error.response?.data?.message || error.message || 'Unable to complete the category request.'
+  error.response?.data?.message || error.message || 'Không thể thực hiện yêu cầu danh mục.'
 );
 
 function Categories() {
@@ -87,7 +87,7 @@ function Categories() {
         await categoryService.create(values);
       }
       setModalOpen(false);
-      message.success(editing ? 'Category updated.' : 'Category created.');
+      message.success(editing ? 'Đã cập nhật danh mục.' : 'Đã tạo danh mục mới.');
       await loadCategories();
     } catch (error) {
       setFormError(getErrorMessage(error));
@@ -102,7 +102,7 @@ function Categories() {
     try {
       await categoryService.remove(deleting._id);
       setDeleting(null);
-      message.success('Category hidden from the storefront.');
+      message.success('Đã tạm ẩn danh mục khỏi cửa hàng.');
       await loadCategories();
     } catch (error) {
       setDeleteError(getErrorMessage(error));
@@ -113,35 +113,35 @@ function Categories() {
 
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id', render: (value) => value || '—' },
-    { title: 'Category Name', dataIndex: 'name', key: 'name', render: (value) => <strong className="table-primary">{value}</strong> },
-    { title: 'Description', dataIndex: 'description', key: 'description', render: (value) => value || '—' },
-    { title: 'Products', dataIndex: 'productCount', key: 'productCount', render: (value) => value ?? '—' },
+    { title: 'Tên danh mục', dataIndex: 'name', key: 'name', render: (value) => <strong className="table-primary">{value}</strong> },
+    { title: 'Mô tả', dataIndex: 'description', key: 'description', render: (value) => value || '—' },
+    { title: 'Số sản phẩm', dataIndex: 'productCount', key: 'productCount', render: (value) => value ?? '—' },
     {
-      title: 'Status',
+      title: 'Trạng thái',
       dataIndex: 'isActive',
       key: 'status',
       render: (isActive) => {
-        const status = isActive ? 'Active' : 'Inactive';
-        return <Tag color={isActive ? 'green' : 'default'}>{status}</Tag>;
+        const statusLabel = isActive ? 'Đang hoạt động' : 'Tạm ẩn';
+        return <Tag color={isActive ? 'green' : 'default'}>{statusLabel}</Tag>;
       },
     },
     ...(canManageCategories
       ? [{
-        title: 'Actions',
+        title: 'Thao tác',
         key: 'actions',
         render: (_, category) => (
           <div className="table-actions">
             <Button
               type="text"
               icon={<EditOutlined />}
-              aria-label={`Edit ${category.name}`}
+              aria-label={`Chỉnh sửa ${category.name}`}
               onClick={() => openForm(category)}
             />
             <Button
               type="text"
               danger
               icon={<DeleteOutlined />}
-              aria-label={`Delete ${category.name}`}
+              aria-label={`Xóa ${category.name}`}
               onClick={() => {
                 setDeleteError('');
                 setDeleting(category);
@@ -157,13 +157,13 @@ function Categories() {
     <div className="page-stack">
       <section className="page-intro">
         <div>
-          <Typography.Text className="eyebrow">CATALOG STRUCTURE</Typography.Text>
-          <Typography.Title level={1}>Categories</Typography.Title>
-          <Typography.Paragraph>Organize the catalog your customers browse.</Typography.Paragraph>
+          <Typography.Text className="eyebrow">CẤU TRÚC DANH MỤC</Typography.Text>
+          <Typography.Title level={1}>Danh mục</Typography.Title>
+          <Typography.Paragraph>Tổ chức và quản lý các danh mục hàng hóa trên cửa hàng.</Typography.Paragraph>
         </div>
         {canManageCategories && (
           <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm()}>
-            Add Category
+            Thêm danh mục
           </Button>
         )}
       </section>
@@ -172,7 +172,7 @@ function Categories() {
           type="error"
           showIcon
           message={loadError}
-          action={<Button size="small" onClick={loadCategories}>Retry</Button>}
+          action={<Button size="small" onClick={loadCategories}>Thử lại</Button>}
           style={{ marginBottom: 16 }}
         />
       )}
@@ -181,7 +181,7 @@ function Categories() {
           <Input
             allowClear
             prefix={<SearchOutlined />}
-            placeholder="Search categories"
+            placeholder="Tìm kiếm danh mục..."
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -195,19 +195,20 @@ function Categories() {
           scroll={{ x: 760 }}
           locale={{
             emptyText: loadError
-              ? <Empty description="Categories could not be loaded." />
-              : <Empty description={query ? 'No matching categories.' : 'No categories yet.'} />,
+              ? <Empty description="Không thể tải danh sách danh mục." />
+              : <Empty description={query ? 'Không tìm thấy danh mục phù hợp.' : 'Chưa có danh mục nào.'} />,
           }}
         />
       </Card>
       {canManageCategories && (
         <>
           <Modal
-            title={editing ? 'Edit Category' : 'Add Category'}
+            title={editing ? 'Chỉnh sửa danh mục' : 'Thêm danh mục'}
             open={modalOpen}
             onCancel={() => setModalOpen(false)}
             onOk={saveCategory}
-            okText="Save"
+            okText="Lưu"
+            cancelText="Hủy"
             confirmLoading={saving}
             cancelButtonProps={{ disabled: saving }}
             closable={!saving}
@@ -218,37 +219,38 @@ function Categories() {
             )}
             <Form form={form} layout="vertical" requiredMark={false}>
               <Form.Item
-                label="Category Name"
+                label="Tên danh mục"
                 name="name"
-                rules={[{ required: true, whitespace: true, message: 'Category name is required.' }]}
+                rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập tên danh mục.' }]}
               >
-                <Input placeholder="e.g. Accessories" />
+                <Input placeholder="VD: Áo Sơ Mi, Quần Jeans, Phụ Kiện..." />
               </Form.Item>
-              <Form.Item label="Description" name="description">
-                <Input.TextArea rows={3} placeholder="Describe this category" />
+              <Form.Item label="Mô tả" name="description">
+                <Input.TextArea rows={3} placeholder="Mô tả ngắn gọn về danh mục này" />
               </Form.Item>
               <Form.Item
-                label="Status"
+                label="Trạng thái"
                 name="status"
                 rules={[{ required: true }]}
-                extra={!editing && 'New categories are created as active by the API.'}
+                extra={!editing && 'Danh mục mới tạo mặc định sẽ ở trạng thái đang hoạt động.'}
               >
                 <Select
                   disabled={!editing}
                   options={[
-                    { value: 'Active', label: 'Active' },
-                    { value: 'Inactive', label: 'Inactive' },
+                    { value: 'Active', label: 'Đang hoạt động' },
+                    { value: 'Inactive', label: 'Tạm ẩn' },
                   ]}
                 />
               </Form.Item>
             </Form>
           </Modal>
           <Modal
-            title={`Delete ${deleting?.name}?`}
+            title={`Ẩn / Xóa ${deleting?.name}?`}
             open={Boolean(deleting)}
             onCancel={() => setDeleting(null)}
             onOk={confirmDelete}
-            okText="Delete"
+            okText="Xóa"
+            cancelText="Hủy"
             okButtonProps={{ danger: true }}
             confirmLoading={deletingRequest}
             cancelButtonProps={{ disabled: deletingRequest }}
@@ -256,7 +258,7 @@ function Categories() {
             maskClosable={!deletingRequest}
           >
             <Typography.Paragraph>
-              This category will be marked inactive and hidden from the storefront.
+              Danh mục này sẽ được chuyển sang trạng thái tạm ẩn và không hiển thị trên cửa hàng.
             </Typography.Paragraph>
             {deleteError && <Alert message={deleteError} type="error" showIcon />}
           </Modal>

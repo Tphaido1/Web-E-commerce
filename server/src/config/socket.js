@@ -46,10 +46,24 @@ const authenticateSocket = async (socket, next) => {
  * @param {import('http').Server} httpServer
  * @returns {import('socket.io').Server}
  */
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  if (origin === env.CLIENT_URL || origin === env.ADMIN_URL) return true;
+  if (env.NODE_ENV !== 'production') {
+    return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  }
+  return false;
+};
+
 const initializeSocket = (httpServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: [env.CLIENT_URL, env.ADMIN_URL],
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error('Chặn bởi chính sách CORS'));
+      },
       credentials: true,
       methods: ['GET', 'POST'],
     },

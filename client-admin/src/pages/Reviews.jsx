@@ -226,7 +226,7 @@ function Reviews() {
           <div>
             <Typography.Title level={4} style={{ margin: 0 }}>
               <StarOutlined style={{ color: '#faad14', marginRight: 8 }} />
-              Kiểm duyệt Đánh giá & Phản hồi (Reviews Moderation)
+              Kiểm duyệt Đánh giá & Phản hồi
             </Typography.Title>
             <Typography.Text type="secondary">
               Quản lý phản hồi từ khách hàng, bao gồm trạng thái đã mua hàng thực tế.

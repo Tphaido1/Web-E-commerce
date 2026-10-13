@@ -60,7 +60,7 @@ function OrderNotifications() {
 
         setUnreadCount((count) => count + 1);
         message.info({
-          content: `New order ${order.orderCode || ''} from ${order.customerName || 'a customer'}`,
+          content: `Đơn hàng mới ${order.orderCode || ''} từ ${order.customerName || 'khách hàng'}`,
           duration: 6,
         });
       });
@@ -87,13 +87,13 @@ function OrderNotifications() {
   if (!enabled) return null;
 
   return (
-    <Tooltip title={connected ? 'Order notifications connected' : 'Order notifications disconnected'}>
+    <Tooltip title={connected ? 'Thông báo đơn hàng trực tuyến' : 'Mất kết nối thông báo đơn hàng'}>
       <Badge count={unreadCount} overflowCount={99}>
         <Badge dot status={connected ? 'success' : 'default'}>
           <Button
             type="text"
             icon={<BellOutlined />}
-            aria-label={`Order notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
+            aria-label={`Thông báo đơn hàng${unreadCount ? `, ${unreadCount} chưa đọc` : ''}`}
             onClick={() => {
               setUnreadCount(0);
               navigate('/orders');

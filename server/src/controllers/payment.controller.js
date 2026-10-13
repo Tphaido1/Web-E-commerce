@@ -65,8 +65,11 @@ const verifyVNPaySecureHash = (query, secretKey) => {
   return crypto.timingSafeEqual(Buffer.from(secureHash, 'hex'), Buffer.from(calculatedHash, 'hex'));
 };
 
-const isVNPayConfigured = () => Boolean(env.VNP_TMN_CODE && env.VNP_HASH_SECRET &&
-  (env.NODE_ENV === 'test' || !['RAHZANVOWZGCLUTNZJNXGUSYDJAEXMGS', 'your_vnpay_hash_secret'].includes(env.VNP_HASH_SECRET)));
+const isVNPayConfigured = () => Boolean(
+  env.VNP_TMN_CODE &&
+  env.VNP_HASH_SECRET &&
+  env.VNP_HASH_SECRET !== 'your_vnpay_hash_secret'
+);
 
 const validCallback = (params) => params.vnp_TmnCode === env.VNP_TMN_CODE &&
   typeof params.vnp_TxnRef === 'string' && /^[\w-]{1,100}$/.test(params.vnp_TxnRef) &&
