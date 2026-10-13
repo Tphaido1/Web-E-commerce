@@ -13,7 +13,7 @@ const formatPrice = (value) => new Intl.NumberFormat('vi-VN', {
 }).format(value || 0);
 
 const getErrorMessage = (error) => (
-  error.response?.data?.message || error.message || 'Unable to complete the product request.'
+  error.response?.data?.message || error.message || 'Không thể hoàn tất yêu cầu sản phẩm.'
 );
 
 function Products() {
@@ -98,7 +98,7 @@ function Products() {
     try {
       await productService.remove(deleting._id);
       setDeleting(null);
-      message.success('Product hidden from the storefront.');
+      message.success('Đã tạm ẩn sản phẩm khỏi cửa hàng.');
       setPagination((current) => ({
         ...current,
         current: current.current > 1 && products.length === 1 ? current.current - 1 : current.current,
@@ -113,7 +113,7 @@ function Products() {
 
   const columns = useMemo(() => [
     {
-      title: 'Image',
+      title: 'Hình ảnh',
       dataIndex: 'image',
       key: 'image',
       render: (value, product) => value
@@ -121,43 +121,43 @@ function Products() {
         : <div className="table-product-avatar">{product.name.slice(0, 2).toUpperCase()}</div>,
     },
     {
-      title: 'Product Name',
+      title: 'Tên sản phẩm',
       dataIndex: 'name',
       key: 'name',
       render: (value, product) => (
         <div>
           <strong className="table-primary">{value}</strong>
-          <span className="table-secondary">{product.variants?.map((variant) => variant.sku).join(', ') || 'No variant SKU'}</span>
+          <span className="table-secondary">{product.variants?.map((variant) => variant.sku).join(', ') || 'Chưa có SKU biến thể'}</span>
         </div>
       ),
     },
-    { title: 'Category', dataIndex: 'category', key: 'category' },
-    { title: 'Price', dataIndex: 'price', key: 'price', render: formatPrice },
-    { title: 'Stock', dataIndex: 'stock', key: 'stock' },
+    { title: 'Danh mục', dataIndex: 'category', key: 'category' },
+    { title: 'Giá', dataIndex: 'price', key: 'price', render: formatPrice },
+    { title: 'Tồn kho', dataIndex: 'stock', key: 'stock' },
     {
-      title: 'Status',
+      title: 'Trạng thái',
       dataIndex: 'isActive',
       key: 'status',
       render: (isActive) => (
-        <Tag color={isActive ? 'green' : 'default'}>{isActive ? 'Active' : 'Inactive'}</Tag>
+        <Tag color={isActive ? 'green' : 'default'}>{isActive ? 'Đang bán' : 'Tạm ẩn'}</Tag>
       ),
     },
     {
-      title: 'Actions',
+      title: 'Thao tác',
       key: 'actions',
       render: (_, product) => (
         <div className="table-actions">
           <Button
             type="text"
             icon={<EyeOutlined />}
-            aria-label={`View ${product.name}`}
+            aria-label={`Xem ${product.name}`}
             onClick={() => navigate(`/products/${product._id}`)}
           />
           {canManageProducts && (
             <Button
               type="text"
               icon={<EditOutlined />}
-              aria-label={`Edit ${product.name}`}
+              aria-label={`Chỉnh sửa ${product.name}`}
               onClick={() => navigate(`/products/${product._id}/edit`)}
             />
           )}
@@ -166,7 +166,7 @@ function Products() {
               type="text"
               danger
               icon={<DeleteOutlined />}
-              aria-label={`Delete ${product.name}`}
+              aria-label={`Xóa ${product.name}`}
               onClick={() => {
                 setDeleteError('');
                 setDeleting(product);
@@ -182,13 +182,13 @@ function Products() {
     <div className="page-stack">
       <section className="page-intro">
         <div>
-          <Typography.Text className="eyebrow">CATALOG</Typography.Text>
-          <Typography.Title level={1}>Products</Typography.Title>
-          <Typography.Paragraph>Manage the products and variants in your catalog.</Typography.Paragraph>
+          <Typography.Text className="eyebrow">DANH MỤC SẢN PHẨM</Typography.Text>
+          <Typography.Title level={1}>Sản phẩm</Typography.Title>
+          <Typography.Paragraph>Quản lý các sản phẩm và biến thể trong danh mục hàng hóa.</Typography.Paragraph>
         </div>
         {canManageProducts && (
           <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/products/new')}>
-            Add Product
+            Thêm sản phẩm
           </Button>
         )}
       </section>
@@ -197,25 +197,25 @@ function Products() {
           type="error"
           showIcon
           message={loadError}
-          action={<Button size="small" onClick={() => setReload((current) => current + 1)}>Retry</Button>}
+          action={<Button size="small" onClick={() => setReload((current) => current + 1)}>Thử lại</Button>}
           style={{ marginBottom: 16 }}
         />
       )}
       {categoryError && (
-        <Alert type="error" showIcon message={`Unable to load categories: ${categoryError}`} style={{ marginBottom: 16 }} />
+        <Alert type="error" showIcon message={`Không thể tải danh mục: ${categoryError}`} style={{ marginBottom: 16 }} />
       )}
       <Card className="table-card" variant="borderless">
         <div className="table-toolbar product-toolbar">
           <Input
             allowClear
             prefix={<SearchOutlined />}
-            placeholder="Search product name or description"
+            placeholder="Tìm kiếm theo tên hoặc mô tả sản phẩm"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
           <Select
             allowClear
-            placeholder="Category"
+            placeholder="Danh mục"
             options={categories.map((item) => ({ value: item.name, label: item.name }))}
             value={category}
             onChange={(value) => {
@@ -225,7 +225,7 @@ function Products() {
           />
           <InputNumber
             min={0}
-            placeholder="Min price"
+            placeholder="Giá tối thiểu"
             value={minPrice}
             onChange={(value) => {
               setMinPrice(value ?? undefined);
@@ -234,7 +234,7 @@ function Products() {
           />
           <InputNumber
             min={0}
-            placeholder="Max price"
+            placeholder="Giá tối đa"
             value={maxPrice}
             onChange={(value) => {
               setMaxPrice(value ?? undefined);
@@ -250,8 +250,8 @@ function Products() {
           scroll={{ x: 980 }}
           locale={{
             emptyText: loadError
-              ? <Empty description="Products could not be loaded." />
-              : <Empty description="No products found." />,
+              ? <Empty description="Không thể tải danh sách sản phẩm." />
+              : <Empty description="Không tìm thấy sản phẩm nào." />,
           }}
           pagination={{
             current: pagination.current,
@@ -265,11 +265,12 @@ function Products() {
       </Card>
       {canDeleteProducts && (
         <Modal
-          title={`Delete ${deleting?.name}?`}
+          title={`Ẩn / Xóa ${deleting?.name}?`}
           open={Boolean(deleting)}
           onCancel={() => setDeleting(null)}
           onOk={confirmDelete}
-          okText="Delete"
+          okText="Xóa"
+          cancelText="Hủy"
           okButtonProps={{ danger: true }}
           confirmLoading={deleteLoading}
           cancelButtonProps={{ disabled: deleteLoading }}
@@ -277,7 +278,7 @@ function Products() {
           maskClosable={!deleteLoading}
         >
           <Typography.Paragraph>
-            This product will be marked inactive and hidden from the storefront.
+            Sản phẩm này sẽ được chuyển sang trạng thái tạm ẩn và không hiển thị trên cửa hàng.
           </Typography.Paragraph>
           {deleteError && <Alert message={deleteError} type="error" showIcon />}
         </Modal>

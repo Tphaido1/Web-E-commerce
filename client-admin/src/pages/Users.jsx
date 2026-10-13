@@ -5,12 +5,10 @@ import { Navigate } from 'react-router-dom';
 import { authService } from '../services/authService.js';
 import { userService } from '../services/userService.js';
 
-const errorMessage = (error) => error.response?.data?.message || error.message || 'Unable to manage users.';
+const errorMessage = (error) => error.response?.data?.message || error.message || 'Không thể quản lý tài khoản người dùng.';
 const roleOptions = [
-  { value: 'customer', label: 'Khách hàng (Customer)' },
-  { value: 'admin', label: 'Chủ shop (Admin)' },
-  // PHẦN MỞ RỘNG (TẠM ẨN): Role vendor cho mô hình multi-vendor
-  // { value: 'vendor', label: 'Vendor (Người bán)' },
+  { value: 'customer', label: 'Khách hàng' },
+  { value: 'admin', label: 'Quản trị viên (Admin)' },
 ];
 
 function Users() {
@@ -70,7 +68,7 @@ function Users() {
     setDetailError('');
     try {
       await userService.update(selectedUser._id, values);
-      message.success('User permissions updated.');
+      message.success('Đã cập nhật quyền người dùng.');
       setSelectedId(null);
       setReload((current) => current + 1);
     } catch (error) {
@@ -79,25 +77,25 @@ function Users() {
   };
   const columns = [
     { title: 'Email', dataIndex: 'email', key: 'email' },
-    { title: 'Role', dataIndex: 'role', key: 'role', render: (value) => <Tag color={value === 'admin' ? 'purple' : value === 'vendor' ? 'blue' : 'default'}>{value}</Tag> },
-    { title: 'Status', dataIndex: 'isActive', key: 'isActive', render: (value) => <Tag color={value ? 'green' : 'red'}>{value ? 'Active' : 'Inactive'}</Tag> },
-    { title: 'Created', dataIndex: 'createdAt', key: 'createdAt', render: (value) => value ? new Date(value).toLocaleDateString('vi-VN') : '—' },
-    { title: 'Actions', key: 'actions', render: (_, user) => <Button size="small" icon={<EyeOutlined />} onClick={() => setSelectedId(user._id)}>View / Edit</Button> },
+    { title: 'Vai trò', dataIndex: 'role', key: 'role', render: (value) => <Tag color={value === 'admin' ? 'purple' : value === 'vendor' ? 'blue' : 'default'}>{value === 'admin' ? 'Admin' : value === 'vendor' ? 'Người bán' : 'Khách hàng'}</Tag> },
+    { title: 'Trạng thái', dataIndex: 'isActive', key: 'isActive', render: (value) => <Tag color={value ? 'green' : 'red'}>{value ? 'Hoạt động' : 'Bị khóa'}</Tag> },
+    { title: 'Ngày tạo', dataIndex: 'createdAt', key: 'createdAt', render: (value) => value ? new Date(value).toLocaleDateString('vi-VN') : '—' },
+    { title: 'Thao tác', key: 'actions', render: (_, user) => <Button size="small" icon={<EyeOutlined />} onClick={() => setSelectedId(user._id)}>Xem / Sửa</Button> },
   ];
   const filterChange = (setter) => (value) => { setter(value); setPagination((current) => ({ ...current, current: 1 })); };
   const isOwnAccount = selectedUser?._id === ownId;
 
   return (
     <div className="page-stack">
-      <section className="page-intro"><div><Typography.Text className="eyebrow">ACCESS MANAGEMENT</Typography.Text><Typography.Title level={1}><TeamOutlined /> Users</Typography.Title><Typography.Paragraph>Review accounts and manage roles or account access.</Typography.Paragraph></div><Button icon={<ReloadOutlined />} loading={loading} onClick={() => setReload((current) => current + 1)}>Refresh</Button></section>
-      {loadError && <Alert type="error" showIcon message={loadError} action={<Button size="small" onClick={() => setReload((current) => current + 1)}>Retry</Button>} style={{ marginBottom: 16 }} />}
+      <section className="page-intro"><div><Typography.Text className="eyebrow">QUẢN LÝ TRUY CẬP</Typography.Text><Typography.Title level={1}><TeamOutlined /> Người dùng</Typography.Title><Typography.Paragraph>Xem danh sách tài khoản và quản trị vai trò, trạng thái truy cập.</Typography.Paragraph></div><Button icon={<ReloadOutlined />} loading={loading} onClick={() => setReload((current) => current + 1)}>Làm mới</Button></section>
+      {loadError && <Alert type="error" showIcon message={loadError} action={<Button size="small" onClick={() => setReload((current) => current + 1)}>Thử lại</Button>} style={{ marginBottom: 16 }} />}
       <Card className="table-card" variant="borderless">
-        <div className="table-toolbar management-toolbar"><Input aria-label="Search users" allowClear prefix={<SearchOutlined />} placeholder="Search email" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} /><Select aria-label="User role" allowClear placeholder="All roles" value={role} options={roleOptions} onChange={filterChange(setRole)} /><Select aria-label="Account status" allowClear placeholder="All accounts" value={active} options={[{ value: true, label: 'Active' }, { value: false, label: 'Inactive' }]} onChange={filterChange(setActive)} /></div>
-        <Table rowKey="_id" columns={columns} dataSource={loadError ? [] : users} loading={loading} scroll={{ x: 650 }} locale={{ emptyText: <Empty description={loadError ? 'Users could not be loaded.' : 'No matching users.'} /> }} pagination={{ ...pagination, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], onChange: (current, pageSize) => setPagination((value) => ({ ...value, current, pageSize })) }} />
+        <div className="table-toolbar management-toolbar"><Input aria-label="Tìm kiếm người dùng" allowClear prefix={<SearchOutlined />} placeholder="Tìm theo email" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} /><Select aria-label="Vai trò" allowClear placeholder="Tất cả vai trò" value={role} options={roleOptions} onChange={filterChange(setRole)} /><Select aria-label="Trạng thái tài khoản" allowClear placeholder="Tất cả trạng thái" value={active} options={[{ value: true, label: 'Hoạt động' }, { value: false, label: 'Bị khóa' }]} onChange={filterChange(setActive)} /></div>
+        <Table rowKey="_id" columns={columns} dataSource={loadError ? [] : users} loading={loading} scroll={{ x: 650 }} locale={{ emptyText: <Empty description={loadError ? 'Không thể tải danh sách người dùng.' : 'Không tìm thấy người dùng phù hợp.'} /> }} pagination={{ ...pagination, showSizeChanger: true, pageSizeOptions: ['20', '50', '100'], onChange: (current, pageSize) => setPagination((value) => ({ ...value, current, pageSize })) }} />
       </Card>
-      <Modal title="User details and access" open={Boolean(selectedId)} onCancel={() => setSelectedId(null)} onOk={() => form.submit()} okText="Save changes" confirmLoading={saving} okButtonProps={{ disabled: detailLoading || !selectedUser || isOwnAccount }} cancelButtonProps={{ disabled: saving }} closable={!saving} maskClosable={!saving} destroyOnClose>
+      <Modal title="Chi tiết và phân quyền người dùng" open={Boolean(selectedId)} onCancel={() => setSelectedId(null)} onOk={() => form.submit()} okText="Lưu thay đổi" cancelText="Hủy" confirmLoading={saving} okButtonProps={{ disabled: detailLoading || !selectedUser || isOwnAccount }} cancelButtonProps={{ disabled: saving }} closable={!saving} maskClosable={!saving} destroyOnClose>
         {detailError && <Alert type="error" showIcon message={detailError} style={{ marginBottom: 16 }} />}
-        {detailLoading ? <Space><Spin /> Loading user…</Space> : selectedUser && <><Descriptions column={1} size="small" items={[{ key: 'email', label: 'Email', children: selectedUser.email }, { key: 'id', label: 'User ID', children: selectedUser._id }, { key: 'created', label: 'Created', children: new Date(selectedUser.createdAt).toLocaleString() }]} />{isOwnAccount && <Alert type="info" showIcon message="Your own administrator role and active status cannot be changed here." style={{ marginBlock: 16 }} />}<Form form={form} layout="vertical" onFinish={save} disabled={isOwnAccount || saving}><Form.Item name="role" label="Role" rules={[{ required: true }]}><Select options={roleOptions} /></Form.Item><Form.Item name="isActive" label="Account active" valuePropName="checked"><Switch /></Form.Item></Form></>}
+        {detailLoading ? <Space><Spin /> Đang tải thông tin người dùng…</Space> : selectedUser && <><Descriptions column={1} size="small" items={[{ key: 'email', label: 'Email', children: selectedUser.email }, { key: 'id', label: 'ID người dùng', children: selectedUser._id }, { key: 'created', label: 'Ngày tạo', children: new Date(selectedUser.createdAt).toLocaleString('vi-VN') }]} />{isOwnAccount && <Alert type="info" showIcon message="Bạn không thể tự thay đổi vai trò quản trị viên và trạng thái của chính tài khoản mình tại đây." style={{ marginBlock: 16 }} />}<Form form={form} layout="vertical" onFinish={save} disabled={isOwnAccount || saving}><Form.Item name="role" label="Vai trò" rules={[{ required: true }]}><Select options={roleOptions} /></Form.Item><Form.Item name="isActive" label="Kích hoạt tài khoản" valuePropName="checked"><Switch /></Form.Item></Form></>}
       </Modal>
     </div>
   );

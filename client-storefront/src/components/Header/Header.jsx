@@ -353,7 +353,7 @@ function Header() {
                 </li>
                 <li className="elise-menu-item">
                   <Link to="/products" onClick={closeMenu} className="sale-item">
-                    <span>SALE UP TO 50%</span>
+                    <span>GIẢM GIÁ ĐẾN 50%</span>
                     <span className="arrow-right" aria-hidden="true">&gt;</span>
                   </Link>
                 </li>

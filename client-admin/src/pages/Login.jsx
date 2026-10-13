@@ -23,7 +23,7 @@ function Login() {
     setLoading(true);
     try {
       await authService.login(credentials);
-      message.success('Welcome back to NOVA Commerce');
+      message.success('Chào mừng bạn quay lại NOVA Commerce');
       navigate(destination, { replace: true });
     } catch (loginError) {
       setError(
@@ -44,23 +44,23 @@ function Login() {
     <main className="login-shell">
       <section className="login-aside">
         <div className="login-brand"><div className="brand-mark">N</div><strong>NOVA</strong></div>
-        <div className="login-aside-copy"><Typography.Text className="eyebrow">COMMERCE OPERATIONS</Typography.Text><Typography.Title>Make every store day count.</Typography.Title><Typography.Paragraph>One calm workspace for your catalog, categories and orders.</Typography.Paragraph></div>
-        <span className="login-aside-footer">Admin workspace / 2026</span>
+        <div className="login-aside-copy"><Typography.Text className="eyebrow">QUẢN TRỊ HỆ THỐNG</Typography.Text><Typography.Title>Quản lý cửa hàng thông minh và hiệu quả.</Typography.Title><Typography.Paragraph>Không gian làm việc đồng bộ cho danh mục, sản phẩm và đơn hàng của bạn.</Typography.Paragraph></div>
+        <span className="login-aside-footer">Không gian làm việc Admin / 2026</span>
       </section>
       <section className="login-panel">
         <div className="login-card">
-          <Typography.Text className="eyebrow">WELCOME BACK</Typography.Text>
-          <Typography.Title level={1}>Sign in to NOVA</Typography.Title>
-          <Typography.Paragraph className="login-subtitle">Enter your workspace credentials to continue.</Typography.Paragraph>
+          <Typography.Text className="eyebrow">CHÀO MỪNG TRỞ LẠI</Typography.Text>
+          <Typography.Title level={1}>Đăng nhập vào NOVA</Typography.Title>
+          <Typography.Paragraph className="login-subtitle">Nhập thông tin tài khoản của bạn để tiếp tục.</Typography.Paragraph>
           {error && <Alert message={error} type="error" showIcon className="login-alert" />}
           <Form layout="vertical" onFinish={handleSubmit} requiredMark={false}>
-            <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email', message: 'Enter a valid email.' }]}>
+            <Form.Item label="Email" name="email" rules={[{ required: true, type: 'email', message: 'Vui lòng nhập email hợp lệ.' }]}>
               <Input size="large" prefix={<MailOutlined />} placeholder="you@company.com" />
             </Form.Item>
-            <Form.Item label="Password" name="password" rules={[{ required: true, min: 6, message: 'Password must be at least 6 characters.' }]}>
-              <Input.Password size="large" prefix={<LockOutlined />} placeholder="Your password" />
+            <Form.Item label="Mật khẩu" name="password" rules={[{ required: true, min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự.' }]}>
+              <Input.Password size="large" prefix={<LockOutlined />} placeholder="Mật khẩu của bạn" />
             </Form.Item>
-            <Button type="primary" htmlType="submit" size="large" block loading={loading}>Sign in</Button>
+            <Button type="primary" htmlType="submit" size="large" block loading={loading}>Đăng nhập</Button>
           </Form>
         </div>
       </section>

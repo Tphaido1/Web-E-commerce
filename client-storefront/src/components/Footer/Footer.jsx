@@ -32,8 +32,8 @@ function Footer() {
         </div>
       </div>
       <div className="footer-bottom">
-        <span>© 2026 Nova Fashion. All rights reserved.</span>
-        <span>Made for everyday style.</span>
+        <span>© 2026 Nova Fashion. Bảo lưu mọi quyền.</span>
+        <span>Phong cách thời trang mỗi ngày.</span>
       </div>
     </footer>
   );

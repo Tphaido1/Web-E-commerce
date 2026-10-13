@@ -12,7 +12,7 @@ const formatPrice = (value) => new Intl.NumberFormat('vi-VN', {
 }).format(value || 0);
 
 const getErrorMessage = (error) => (
-  error.response?.data?.message || error.message || 'Unable to load this product.'
+  error.response?.data?.message || error.message || 'Không thể tải thông tin sản phẩm.'
 );
 
 function ProductDetail() {
@@ -52,9 +52,9 @@ function ProductDetail() {
           type="error"
           showIcon
           message={error}
-          action={<Button size="small" onClick={() => setReload((current) => current + 1)}>Retry</Button>}
+          action={<Button size="small" onClick={() => setReload((current) => current + 1)}>Thử lại</Button>}
         />
-        <Link to="/products">Back to products</Link>
+        <Link to="/products">Quay lại danh sách sản phẩm</Link>
       </div>
     );
   }
@@ -62,36 +62,36 @@ function ProductDetail() {
   if (!product) {
     return (
       <div className="empty-state">
-        <Empty description="Product not found." />
-        <Link to="/products">Back to products</Link>
+        <Empty description="Không tìm thấy sản phẩm." />
+        <Link to="/products">Quay lại danh sách sản phẩm</Link>
       </div>
     );
   }
 
   const variantColumns = [
-    { title: 'Color', dataIndex: 'color', key: 'color' },
-    { title: 'Size', dataIndex: 'size', key: 'size' },
-    { title: 'Price', dataIndex: 'price', key: 'price', render: formatPrice },
+    { title: 'Màu sắc', dataIndex: 'color', key: 'color' },
+    { title: 'Kích cỡ', dataIndex: 'size', key: 'size' },
+    { title: 'Giá', dataIndex: 'price', key: 'price', render: formatPrice },
     { title: 'SKU', dataIndex: 'sku', key: 'sku' },
-    { title: 'Stock', dataIndex: 'stock', key: 'stock' },
+    { title: 'Tồn kho', dataIndex: 'stock', key: 'stock' },
   ];
 
   return (
     <div className="page-stack">
       <Button type="link" icon={<ArrowLeftOutlined />} className="back-link" onClick={() => navigate('/products')}>
-        Back to products
+        Quay lại danh sách sản phẩm
       </Button>
       <section className="page-intro">
         <div>
-          <Typography.Text className="eyebrow">PRODUCT DETAIL</Typography.Text>
+          <Typography.Text className="eyebrow">CHI TIẾT SẢN PHẨM</Typography.Text>
           <Typography.Title level={1}>{product.name}</Typography.Title>
           <Typography.Paragraph>{product.description}</Typography.Paragraph>
         </div>
         <div>
-          <Tag color={product.isActive ? 'green' : 'default'}>{product.isActive ? 'Active' : 'Inactive'}</Tag>
+          <Tag color={product.isActive ? 'green' : 'default'}>{product.isActive ? 'Đang bán' : 'Tạm ẩn'}</Tag>
           {canManageProducts && (
             <Button icon={<EditOutlined />} onClick={() => navigate(`/products/${product._id}/edit`)}>
-              Edit Product
+              Chỉnh sửa sản phẩm
             </Button>
           )}
         </div>
@@ -106,21 +106,21 @@ function ProductDetail() {
         </Card>
         <Card className="table-card" variant="borderless">
           <Descriptions column={1} bordered>
-            <Descriptions.Item label="Category">{product.category}</Descriptions.Item>
-            <Descriptions.Item label="Base Price">{formatPrice(product.price)}</Descriptions.Item>
-            <Descriptions.Item label="Sale Price">{product.salePrice ? formatPrice(product.salePrice) : '—'}</Descriptions.Item>
-            <Descriptions.Item label="Stock">{product.stock}</Descriptions.Item>
+            <Descriptions.Item label="Danh mục">{product.category}</Descriptions.Item>
+            <Descriptions.Item label="Giá gốc">{formatPrice(product.price)}</Descriptions.Item>
+            <Descriptions.Item label="Giá khuyến mãi">{product.salePrice ? formatPrice(product.salePrice) : '—'}</Descriptions.Item>
+            <Descriptions.Item label="Tồn kho">{product.stock}</Descriptions.Item>
           </Descriptions>
         </Card>
       </div>
       <Card className="table-card detail-variants" variant="borderless">
-        <Typography.Title level={4}>Variants</Typography.Title>
+        <Typography.Title level={4}>Danh sách biến thể</Typography.Title>
         <Table
           rowKey={(variant) => variant._id || variant.sku}
           dataSource={product.variants || []}
           columns={variantColumns}
           pagination={false}
-          locale={{ emptyText: <Empty description="No variants." /> }}
+          locale={{ emptyText: <Empty description="Chưa có biến thể." /> }}
           scroll={{ x: 600 }}
         />
       </Card>

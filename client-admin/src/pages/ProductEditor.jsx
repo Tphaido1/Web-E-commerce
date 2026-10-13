@@ -9,7 +9,7 @@ import { authService } from '../services/authService.js';
 import { userService } from '../services/userService.js';
 
 const getErrorMessage = (error) => (
-  error.response?.data?.message || error.message || 'Unable to complete the product request.'
+  error.response?.data?.message || error.message || 'Không thể hoàn tất yêu cầu sản phẩm.'
 );
 
 function ProductEditor() {
@@ -99,7 +99,7 @@ function ProductEditor() {
           sku: values.sku.trim().toUpperCase(),
         });
       }
-      message.success(id ? 'Product updated.' : 'Product created.');
+      message.success(id ? 'Đã cập nhật sản phẩm.' : 'Đã tạo sản phẩm mới.');
       navigate('/products');
     } catch (error) {
       setSaveError(getErrorMessage(error));
@@ -116,14 +116,14 @@ function ProductEditor() {
   return (
     <div className="page-stack">
       <Button type="link" icon={<ArrowLeftOutlined />} className="back-link" onClick={() => navigate('/products')}>
-        Back to products
+        Quay lại danh sách sản phẩm
       </Button>
       <section className="page-intro">
         <div>
-          <Typography.Text className="eyebrow">CATALOG EDITOR</Typography.Text>
-          <Typography.Title level={1}>{id ? 'Edit Product' : 'Add Product'}</Typography.Title>
+          <Typography.Text className="eyebrow">QUẢN LÝ SẢN PHẨM</Typography.Text>
+          <Typography.Title level={1}>{id ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm'}</Typography.Title>
           <Typography.Paragraph>
-            {id ? 'Update product information and variants.' : 'Create a product for the catalog.'}
+            {id ? 'Cập nhật thông tin chi tiết và biến thể sản phẩm.' : 'Tạo mới sản phẩm cho danh mục bán lẻ.'}
           </Typography.Paragraph>
         </div>
       </section>
@@ -132,7 +132,7 @@ function ProductEditor() {
           type="error"
           showIcon
           message={loadError}
-          action={<Button size="small" onClick={() => setReload((current) => current + 1)}>Retry</Button>}
+          action={<Button size="small" onClick={() => setReload((current) => current + 1)}>Thử lại</Button>}
         />
       ) : (
         <ProductForm

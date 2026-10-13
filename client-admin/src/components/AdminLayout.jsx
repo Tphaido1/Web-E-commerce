@@ -20,24 +20,24 @@ import OrderNotifications from './OrderNotifications.jsx';
 const { Header, Sider, Content } = Layout;
 
 const menuItems = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
-  { key: '/products', icon: <AppstoreOutlined />, label: 'Products' },
-  { key: '/categories', icon: <FolderOpenOutlined />, label: 'Categories' },
-  { key: '/orders', icon: <ShoppingOutlined />, label: 'Orders' },
-  { key: '/inventory', icon: <InboxOutlined />, label: 'Inventory' },
-  { key: '/wishlist-analytics', icon: <HeartOutlined />, label: 'Sản phẩm yêu thích' },
-  { key: '/users', icon: <TeamOutlined />, label: 'Users', adminOnly: true },
-  { key: '/reviews', icon: <StarOutlined />, label: 'Đánh giá (Reviews)' },
+  { key: '/dashboard', icon: <DashboardOutlined />, label: 'Tổng quan' },
+  { key: '/products', icon: <AppstoreOutlined />, label: 'Sản phẩm' },
+  { key: '/categories', icon: <FolderOpenOutlined />, label: 'Danh mục' },
+  { key: '/orders', icon: <ShoppingOutlined />, label: 'Đơn hàng' },
+  { key: '/inventory', icon: <InboxOutlined />, label: 'Quản lý kho' },
+  { key: '/wishlist-analytics', icon: <HeartOutlined />, label: 'Thống kê yêu thích' },
+  { key: '/users', icon: <TeamOutlined />, label: 'Người dùng', adminOnly: true },
+  { key: '/reviews', icon: <StarOutlined />, label: 'Đánh giá' },
 ];
 
 const pageTitles = {
-  '/dashboard': 'Dashboard',
-  '/products': 'Products',
-  '/categories': 'Categories',
-  '/orders': 'Orders',
-  '/inventory': 'Inventory',
+  '/dashboard': 'Tổng quan',
+  '/products': 'Sản phẩm',
+  '/categories': 'Danh mục',
+  '/orders': 'Đơn hàng',
+  '/inventory': 'Quản lý kho',
   '/wishlist-analytics': 'Thống kê Sản phẩm Yêu thích & Gợi ý',
-  '/users': 'Users',
+  '/users': 'Người dùng',
   '/reviews': 'Đánh giá & Phản hồi',
 };
 
@@ -53,7 +53,7 @@ function AdminLayout() {
   const visibleMenuItems = menuItems.filter((item) => !item.adminOnly || user?.role === 'admin')
     .map(({ adminOnly, ...item }) => item);
   const isMobile = !screens.lg;
-  const pageTitle = pageTitles[location.pathname] || (location.pathname.startsWith('/products/') ? 'Products' : 'Dashboard');
+  const pageTitle = pageTitles[location.pathname] || (location.pathname.startsWith('/products/') ? 'Sản phẩm' : 'Tổng quan');
   const selectedKey = useMemo(
     () => menuItems.find((item) => location.pathname.startsWith(item.key))?.key || '/dashboard',
     [location.pathname],
@@ -95,7 +95,7 @@ function AdminLayout() {
             <span>Shop Quần Áo (Chủ shop)</span>
           </div>
         </div>
-        <div className="sider-label">Workspace</div>
+        <div className="sider-label">Không gian làm việc</div>
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
@@ -105,7 +105,7 @@ function AdminLayout() {
         />
         <div className="sider-footer">
           <span className="status-dot" />
-          <span>Workspace ready</span>
+          <span>Hệ thống sẵn sàng</span>
         </div>
       </Sider>
       <Drawer
@@ -124,7 +124,7 @@ function AdminLayout() {
             <span>Shop Quần Áo (Chủ shop)</span>
           </div>
         </div>
-        <div className="sider-label">Workspace</div>
+        <div className="sider-label">Không gian làm việc</div>
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
@@ -154,7 +154,7 @@ function AdminLayout() {
               aria-label={(isMobile ? !mobileOpen : collapsed) ? 'Mở sidebar' : 'Thu gọn sidebar'}
             />
             <div>
-              <Typography.Text className="breadcrumb-label">Admin workspace /</Typography.Text>
+              <Typography.Text className="breadcrumb-label">Quản trị viên /</Typography.Text>
               <Typography.Title level={4} className="page-title">{pageTitle}</Typography.Title>
             </div>
           </div>

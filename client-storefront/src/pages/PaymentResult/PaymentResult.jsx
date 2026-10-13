@@ -19,6 +19,26 @@ function getErrorMessage(error) {
   return error.response?.data?.message || error.message || 'Không thể xác minh kết quả thanh toán.';
 }
 
+function clearDraftPaymentPending() {
+  try {
+    const session = getAuthSession();
+    const userId = session?.user?.id || session?.user?._id || session?.user?.email || 'account';
+    const draftKey = `storefront_checkout_draft:${userId}`;
+    const raw = sessionStorage.getItem(draftKey);
+    if (raw) {
+      const draft = JSON.parse(raw);
+      if (draft?.pendingVnpayOrderId) {
+        draft.pendingVnpayOrderId = '';
+        draft.pendingVnpayAttemptStarted = false;
+        draft.idempotency = null;
+        sessionStorage.setItem(draftKey, JSON.stringify(draft));
+      }
+    }
+  } catch {
+    // Ignore draft cleanup failure
+  }
+}
+
 function PaymentResult() {
   const location = useLocation();
   const [verifiedOrder, setOrder] = useState(null);
@@ -63,6 +83,9 @@ function PaymentResult() {
         if (currentOrder && isCurrentRequest(query) && !controller.signal.aborted) {
           verifiedQueryRef.current = query;
           setOrder(currentOrder);
+          if (currentOrder.paymentStatus === 'paid') {
+            clearDraftPaymentPending();
+          }
         }
       })
       .catch((requestError) => {
@@ -132,7 +155,10 @@ function PaymentResult() {
           <section className="payment-result-card payment-result-error" role="alert">
             <h2>Chưa thể xác minh thanh toán</h2><p>{error}</p>
             <p>Không dựa vào thông tin trong URL để xác nhận giao dịch. Hãy mở đơn hàng để kiểm tra trạng thái từ máy chủ.</p>
-            <Link to="/my-orders">Đến đơn hàng của tôi</Link>
+            <div className="payment-result-actions">
+              <Link to="/checkout" onClick={clearDraftPaymentPending}>Quay lại đặt hàng mới</Link>
+              <Link to="/my-orders" onClick={clearDraftPaymentPending}>Đến đơn hàng của tôi</Link>
+            </div>
           </section>
         ) : order ? (
           <section className={`payment-result-card payment-result-${paymentState}`} role={paymentState === 'pending' ? 'status' : 'region'}>
@@ -163,7 +189,8 @@ function PaymentResult() {
                   {isRetryingPayment ? 'Đang kết nối VNPay...' : 'Thử thanh toán lại'}
                 </button>
               )}
-              <Link to="/my-orders">Đơn hàng của tôi</Link>
+              <Link to="/checkout" onClick={clearDraftPaymentPending}>Đặt đơn hàng mới</Link>
+              <Link to="/my-orders" onClick={clearDraftPaymentPending}>Đơn hàng của tôi</Link>
             </div>
           </section>
         ) : null}
