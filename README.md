@@ -322,6 +322,37 @@ Response `200`:
   - `POST /api/v1/payments/create-vnpay-url`: Sinh URL chuyển hướng sang cổng VNPay với thuật toán ký số **HMAC-SHA512**.
   - `GET /api/v1/payments/vnpay-return`: Xử lý phản hồi điều hướng người dùng sau khi giao dịch.
   - `GET /api/v1/payments/vnpay-ipn`: Webhook Server-to-Server xử lý bất đồng bộ, đối soát mã phản hồi `vnp_ResponseCode === '00'`, cập nhật trạng thái đơn thành `paid` có cơ chế kiểm tra chống xử lý trùng lặp giao dịch (Idempotency).
+  - `POST /api/v1/payments/simulate-sandbox-success`: API mô phỏng thanh toán VNPay Sandbox thành công tức thì phục vụ development & demo.
+
+#### 💳 Thông Tin Thẻ Test NCB & Hướng Dẫn Thử Nghiệm VNPay Sandbox
+
+Hệ thống đã tích hợp sẵn luồng thanh toán VNPay Sandbox với mã QR trực tiếp trên giao diện Storefront và hỗ trợ thanh toán qua thẻ test:
+
+| Thuộc tính thẻ test | Thông tin mẫu (Môi trường VNPay Sandbox) |
+|---|---|
+| **Ngân hàng phát hành** | **NCB** (Ngân hàng Quốc Dân) |
+| **Số thẻ** | `9704198526191432198` |
+| **Tên chủ thẻ** | `NGUYEN VAN A` |
+| **Ngày phát hành** | `07/15` |
+| **Mật khẩu OTP** | `123456` |
+
+**Cấu hình biến môi trường Backend (`server/.env`):**
+```env
+VNP_TMN_CODE=LEAIM3M6
+VNP_HASH_SECRET=KHAOPSXMEKRHSRHHIMVHATDGCHRMNMGB
+VNP_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+VNP_RETURN_URL=http://localhost:5173/checkout/payment-result
+```
+
+**Các cách thử nghiệm thanh toán tại màn hình Checkout Storefront:**
+1. **Quét mã QR Code**: Tại modal thanh toán, ứng dụng hiển thị mã QR thanh toán chuẩn hóa từ URL VNPay. Người dùng có thể quét mã bằng camera điện thoại hoặc app Mobile Banking.
+2. **Thanh toán qua thẻ NCB trực tiếp**: Nhấn nút **"💳 Mở Trang Nhập Thẻ Test NCB Trực Tiếp"** trên modal để mở thẳng cổng nhập thẻ NCB của VNPay (không bị lỗi 76 - Ngân hàng không hỗ trợ), sau đó điền số thẻ, tên và OTP như bảng trên.
+3. **Mở Cổng VNPay Sandbox tổng quan**: Nhấn **"🌐 Mở Cổng VNPay Sandbox (Tất Cả Phương Thức)"** để mở giao diện cổng thanh toán VNPay với đầy đủ các tab lựa chọn (VNPAY-QR, Thẻ nội địa, Thẻ quốc tế, Ví VNPay).
+4. **Mô phỏng thanh toán thành công (Fast-path Test)**: Nhấn **"⚡ Mô Phỏng Thanh Toán Thành Công (Test Nhanh)"** để hệ thống tự động cập nhật trạng thái đơn hàng sang `paid` và hoàn tất đơn ngay lập tức trên Storefront.
+
+**Thông tin truy cập VNPay Merchant Admin (quản lý & kiểm tra giao dịch test):**
+- Địa chỉ Merchant Admin: `https://sandbox.vnpayment.vn/merchantv2/`
+- Kịch bản test SIT: `https://sandbox.vnpayment.vn/vnpaygw-sit-testing/user/login`
 - **Socket.io Realtime Gateway**:
   - Khởi tạo WebSocket Server tích hợp trực tiếp vào Express HTTP Server (`server/src/config/socket.js`).
   - Middleware xác thực Handshake bằng JWT token.

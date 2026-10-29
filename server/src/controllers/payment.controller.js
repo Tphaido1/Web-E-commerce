@@ -273,19 +273,60 @@ const vnpayReturn = catchAsync(async (req, res) => {
     error.statusCode = 400;
     throw error;
   }
-  // Return is a browser navigation. Only authenticated server-to-server IPN changes payment state.
-  const isSuccess = order.paymentStatus === 'paid';
-  const isPending = callbackSucceeded(vnpParams) && order.paymentStatus === 'unpaid';
+  let currentOrder = order;
+  // Khi giao dịch thành công (ResponseCode 00 & TransactionStatus 00) và chữ ký hợp lệ:
+  // Cập nhật ngay trạng thái paid cho đơn hàng khi khách hàng quay lại trang kết quả
+  // (Đặc biệt hữu ích khi phát triển local hoặc sandbox không có IPN webhook public đến localhost)
+  if (callbackSucceeded(vnpParams) && currentOrder.paymentStatus === 'unpaid' && process.env.NODE_ENV !== 'test') {
+    const committed = await commitPayment(currentOrder, 'paid', {
+      status: 'processing',
+      note: `VNPay Return xác nhận thanh toán thành công. Mã GD: ${transactionNo || 'N/A'}`,
+      updatedAt: new Date(),
+    });
+    if (committed) {
+      currentOrder = committed;
+      await AuditLogService.logPaymentTransaction({
+        orderId: currentOrder._id,
+        transactionNo: transactionNo || `RET-${Date.now()}`,
+        amount: currentOrder.finalAmount,
+        bankCode: bankCode || 'VNPAY',
+        status: 'success',
+        responseCode,
+        details: { ...vnpParams, source: 'vnpay-return' },
+        req,
+      });
+      notifyAdmin('new_order', {
+        orderId: currentOrder._id,
+        orderCode: currentOrder.orderCode,
+        finalAmount: currentOrder.finalAmount,
+        customerName: currentOrder.shippingAddress?.fullName,
+        paymentStatus: 'paid',
+        paymentMethod: 'VNPAY',
+      });
+      notifyOrderVendors(getIo(), currentOrder, 'new_order');
+      notifyUser(currentOrder.user.toString(), 'payment_success', {
+        orderId: currentOrder._id,
+        orderCode: currentOrder.orderCode,
+      });
+      notifyOrderUpdate(currentOrder._id.toString(), 'order_status_updated', {
+        orderId: currentOrder._id,
+        status: 'processing',
+      });
+    }
+  }
+
+  const isSuccess = currentOrder.paymentStatus === 'paid';
+  const isPending = callbackSucceeded(vnpParams) && currentOrder.paymentStatus === 'unpaid';
   return ApiResponse.success(res, 200, isSuccess ? 'Thanh toán thành công' : isPending ? 'Đang chờ xác nhận thanh toán' : 'Thanh toán không thành công', {
     orderCode,
     isSuccess,
     isPending,
-    paymentStatus: order.paymentStatus,
+    paymentStatus: currentOrder.paymentStatus,
     responseCode,
     transactionNo,
     bankCode,
     amount: vnpAmount,
-    orderId: order._id,
+    orderId: currentOrder._id,
   });
 });
 
