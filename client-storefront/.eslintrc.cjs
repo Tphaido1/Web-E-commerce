@@ -3,6 +3,7 @@ module.exports = {
   env: {
     browser: true,
     es2022: true,
+    node: true,
   },
   parserOptions: {
     ecmaVersion: 'latest',
@@ -21,4 +22,12 @@ module.exports = {
   rules: {
     'no-unused-vars': ['error', { args: 'none', varsIgnorePattern: '^[A-Z]' }],
   },
+  overrides: [
+    {
+      files: ['tests/**/*.js', 'scripts/**/*.js', 'scripts/**/*.mjs'],
+      env: {
+        node: true,
+      },
+    },
+  ],
 };

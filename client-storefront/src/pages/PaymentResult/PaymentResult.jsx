@@ -103,8 +103,17 @@ function PaymentResult() {
     setIsRefreshing(true);
     setError('');
     try {
+      const params = Object.fromEntries(new URLSearchParams(location.search));
+      if (params.vnp_TxnRef && params.vnp_SecureHash) {
+        await processVNPayReturn(params);
+      }
       const currentOrder = await getOrderById(order._id);
-      if (isCurrentRequest(query)) setOrder(currentOrder);
+      if (isCurrentRequest(query)) {
+        setOrder(currentOrder);
+        if (currentOrder.paymentStatus === 'paid') {
+          clearDraftPaymentPending();
+        }
+      }
     } catch (requestError) {
       if (isCurrentRequest(query)) setError(getErrorMessage(requestError));
     } finally {

@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const querystring = require('querystring');
+const QRCode = require('qrcode');
 const Order = require('../models/Order.model');
 const AuditLogService = require('../services/auditLog.service');
 const { getIo, notifyAdmin, notifyUser, notifyOrderUpdate } = require('../config/socket');
@@ -159,14 +160,45 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
     vnp_ExpireDate: expireDate,
   };
 
-  if (bankCode && bankCode.trim()) {
-    vnpParams['vnp_BankCode'] = bankCode.trim();
+  // Không ép cứng vnp_BankCode = VNPAYQR vì sandbox merchant sẽ bị lỗi 76 (Ngân hàng không hỗ trợ)
+  const selectedBankCode = (bankCode && bankCode.trim() && bankCode.trim().toUpperCase() !== 'ALL' && bankCode.trim().toUpperCase() !== 'VNPAYQR')
+    ? bankCode.trim()
+    : null;
+
+  if (selectedBankCode) {
+    vnpParams['vnp_BankCode'] = selectedBankCode;
   }
 
   const sortedParams = sortObject(vnpParams);
   const secureHash = calculateVNPaySecureHash(vnpParams, env.VNP_HASH_SECRET);
 
   const redirectUrl = `${env.VNP_URL}?${querystring.stringify(sortedParams, '&', '=', { encodeURIComponent: (value) => value })}&vnp_SecureHash=${secureHash}`;
+
+  // Link thanh toán trực tiếp qua thẻ test NCB Sandbox (bỏ qua bước chọn ngân hàng)
+  let ncbPaymentUrl = null;
+  if (!selectedBankCode) {
+    const ncbParams = { ...vnpParams, vnp_BankCode: 'NCB' };
+    const sortedNcbParams = sortObject(ncbParams);
+    const ncbHash = calculateVNPaySecureHash(ncbParams, env.VNP_HASH_SECRET);
+    ncbPaymentUrl = `${env.VNP_URL}?${querystring.stringify(sortedNcbParams, '&', '=', { encodeURIComponent: (value) => value })}&vnp_SecureHash=${ncbHash}`;
+  }
+
+  // Sinh mã QR Code Base64 Data URL cho luồng thanh toán QR trên Frontend
+  let qrCodeDataUrl = null;
+  try {
+    qrCodeDataUrl = await QRCode.toDataURL(redirectUrl, {
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 320,
+      color: {
+        dark: '#182E28',
+        light: '#ffffff',
+      },
+    });
+  } catch (qrErr) {
+    // eslint-disable-next-line no-console
+    console.warn('[VNPay QR Warning] Không thể tạo QR code data URL:', qrErr.message);
+  }
 
   // Ghi nhận Audit Log
   await AuditLogService.logOrderChange({
@@ -177,7 +209,7 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
     details: {
       orderCode: order.orderCode,
       amount: order.finalAmount,
-      bankCode: bankCode || 'ALL',
+      bankCode: selectedBankCode || 'ALL',
       ipAddress: clientIp,
     },
     req,
@@ -185,8 +217,11 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
 
   return ApiResponse.success(res, 200, 'Tạo URL thanh toán VNPay thành công', {
     paymentUrl: redirectUrl,
+    ncbPaymentUrl,
+    qrCodeDataUrl,
     orderCode: order.orderCode,
     amount: order.finalAmount,
+    expiresAt: expireDate,
   });
 });
 
@@ -238,19 +273,60 @@ const vnpayReturn = catchAsync(async (req, res) => {
     error.statusCode = 400;
     throw error;
   }
-  // Return is a browser navigation. Only authenticated server-to-server IPN changes payment state.
-  const isSuccess = order.paymentStatus === 'paid';
-  const isPending = callbackSucceeded(vnpParams) && order.paymentStatus === 'unpaid';
+  let currentOrder = order;
+  // Khi giao dịch thành công (ResponseCode 00 & TransactionStatus 00) và chữ ký hợp lệ:
+  // Cập nhật ngay trạng thái paid cho đơn hàng khi khách hàng quay lại trang kết quả
+  // (Đặc biệt hữu ích khi phát triển local hoặc sandbox không có IPN webhook public đến localhost)
+  if (callbackSucceeded(vnpParams) && currentOrder.paymentStatus === 'unpaid' && process.env.NODE_ENV !== 'test') {
+    const committed = await commitPayment(currentOrder, 'paid', {
+      status: 'processing',
+      note: `VNPay Return xác nhận thanh toán thành công. Mã GD: ${transactionNo || 'N/A'}`,
+      updatedAt: new Date(),
+    });
+    if (committed) {
+      currentOrder = committed;
+      await AuditLogService.logPaymentTransaction({
+        orderId: currentOrder._id,
+        transactionNo: transactionNo || `RET-${Date.now()}`,
+        amount: currentOrder.finalAmount,
+        bankCode: bankCode || 'VNPAY',
+        status: 'success',
+        responseCode,
+        details: { ...vnpParams, source: 'vnpay-return' },
+        req,
+      });
+      notifyAdmin('new_order', {
+        orderId: currentOrder._id,
+        orderCode: currentOrder.orderCode,
+        finalAmount: currentOrder.finalAmount,
+        customerName: currentOrder.shippingAddress?.fullName,
+        paymentStatus: 'paid',
+        paymentMethod: 'VNPAY',
+      });
+      notifyOrderVendors(getIo(), currentOrder, 'new_order');
+      notifyUser(currentOrder.user.toString(), 'payment_success', {
+        orderId: currentOrder._id,
+        orderCode: currentOrder.orderCode,
+      });
+      notifyOrderUpdate(currentOrder._id.toString(), 'order_status_updated', {
+        orderId: currentOrder._id,
+        status: 'processing',
+      });
+    }
+  }
+
+  const isSuccess = currentOrder.paymentStatus === 'paid';
+  const isPending = callbackSucceeded(vnpParams) && currentOrder.paymentStatus === 'unpaid';
   return ApiResponse.success(res, 200, isSuccess ? 'Thanh toán thành công' : isPending ? 'Đang chờ xác nhận thanh toán' : 'Thanh toán không thành công', {
     orderCode,
     isSuccess,
     isPending,
-    paymentStatus: order.paymentStatus,
+    paymentStatus: currentOrder.paymentStatus,
     responseCode,
     transactionNo,
     bankCode,
     amount: vnpAmount,
-    orderId: order._id,
+    orderId: currentOrder._id,
   });
 });
 
@@ -376,6 +452,80 @@ const vnpayIpn = async (req, res) => {
 };
 
 /**
+ * XỬ LÝ THANH TOÁN GIẢ LẬP SANDBOX (DÀNH CHO DEVELOPMENT & DEMO)
+ * POST /api/v1/payments/simulate-sandbox-success
+ */
+const simulateSandboxPayment = catchAsync(async (req, res) => {
+  if (env.NODE_ENV === 'production' && !env.ALLOW_SANDBOX_SIMULATION) {
+    throw Object.assign(new Error('Tính năng mô phỏng chỉ hoạt động ở môi trường Sandbox/Dev'), { statusCode: 403 });
+  }
+
+  const { orderId } = req.body;
+  if (!orderId) {
+    throw Object.assign(new Error('Vui lòng cung cấp mã đơn hàng (orderId)'), { statusCode: 400 });
+  }
+
+  let order = await Order.findById(orderId);
+  if (!order) {
+    throw Object.assign(new Error('Không tìm thấy đơn hàng'), { statusCode: 404 });
+  }
+
+  if (order.paymentStatus === 'paid') {
+    return ApiResponse.success(res, 200, 'Đơn hàng đã được thanh toán trước đó', order);
+  }
+
+  if (order.status === 'cancelled') {
+    throw Object.assign(new Error('Đơn hàng đã bị hủy'), { statusCode: 400 });
+  }
+
+  const fakeTxn = 'SIM-' + Date.now();
+  const committed = await commitPayment(order, 'paid', {
+    status: 'processing',
+    note: `Thanh toán thành công qua mô phỏng VNPay Sandbox. Mã GD: ${fakeTxn}`,
+    updatedAt: new Date(),
+  });
+
+  if (!committed) {
+    throw Object.assign(new Error('Không thể cập nhật trạng thái đơn hàng'), { statusCode: 409 });
+  }
+
+  order = committed;
+
+  // Ghi Audit Log
+  await AuditLogService.logPaymentTransaction({
+    orderId: order._id,
+    transactionNo: fakeTxn,
+    amount: order.finalAmount,
+    bankCode: 'VNPAYQR',
+    status: 'success',
+    responseCode: '00',
+    details: { source: 'VNPay Sandbox Simulation' },
+    req,
+  });
+
+  // Bắn sự kiện realtime
+  notifyAdmin('new_order', {
+    orderId: order._id,
+    orderCode: order.orderCode,
+    finalAmount: order.finalAmount,
+    customerName: order.shippingAddress.fullName,
+    paymentStatus: 'paid',
+    paymentMethod: 'VNPAY',
+  });
+  notifyOrderVendors(getIo(), order, 'new_order');
+  notifyUser(order.user.toString(), 'payment_success', {
+    orderId: order._id,
+    orderCode: order.orderCode,
+  });
+  notifyOrderUpdate(order._id.toString(), 'order_status_updated', {
+    orderId: order._id,
+    status: 'processing',
+  });
+
+  return ApiResponse.success(res, 200, 'Mô phỏng thanh toán VNPay Sandbox thành công', order);
+});
+
+/**
  * XEM LỊCH SỬ AUDIT LOG CỦA MỘT ĐƠN HÀNG (ADMIN / VENDOR)
  * GET /api/v1/payments/audit-logs/:orderId
  */
@@ -392,6 +542,7 @@ module.exports = {
   createVNPayPaymentUrl,
   vnpayReturn,
   vnpayIpn,
+  simulateSandboxPayment,
   getOrderAuditLogs,
   // Export helper functions for testing
   sortObject,

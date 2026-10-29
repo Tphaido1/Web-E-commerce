@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Header from '../../components/Header/Header.jsx';
 import Footer from '../../components/Footer/Footer.jsx';
 import CartItem from '../../components/CartItem/CartItem.jsx';
+import VNPayQrModal from '../../components/VNPayQrModal/VNPayQrModal.jsx';
 import { useCart } from '../../context/CartContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { getAuthSession } from '../../services/authSession.js';
@@ -29,9 +30,18 @@ function getDraftKey() {
 
 function readDraft() {
   try {
+    const session = getAuthSession();
     const draft = JSON.parse(sessionStorage.getItem(getDraftKey()) || 'null');
     return {
-      address: { ...EMPTY_ADDRESS, ...draft?.address },
+      address: {
+        fullName: draft?.address?.fullName || session?.user?.name || '',
+        phone: draft?.address?.phone || session?.user?.phone || '',
+        address: draft?.address?.address || session?.user?.address || '',
+        city: draft?.address?.city || '',
+        district: draft?.address?.district || '',
+        ward: draft?.address?.ward || '',
+        notes: draft?.address?.notes || '',
+      },
       couponCode: draft?.couponCode || '',
       paymentMethod: draft?.paymentMethod === 'VNPAY' ? 'VNPAY' : 'COD',
       idempotency: draft?.idempotency || null,
@@ -65,7 +75,7 @@ function getErrorMessage(error) {
 
 function Checkout() {
   const toast = useToast();
-  const { items, subtotal, totalQuantity, status: cartStatus, error: cartError, errorAnnounced, isMutating, syncState, clearCartAfterOrder } = useCart();
+  const { items, subtotal, totalQuantity, status: cartStatus, isMutating, syncState, clearCartAfterOrder } = useCart();
   const [draft, setDraft] = useState(readDraft);
   const draftRef = useRef(draft);
   draftRef.current = draft;
@@ -96,6 +106,7 @@ function Checkout() {
   const [checkoutError, setCheckoutError] = useState('');
   const [checkoutErrorFromRequest, setCheckoutErrorFromRequest] = useState(false);
   const [order, setOrder] = useState(null);
+  const [vnpayModalData, setVnpayModalData] = useState(null);
   const reportCheckoutError = (error) => {
     const message = getErrorMessage(error);
     setCheckoutErrorFromRequest(true);
@@ -147,12 +158,16 @@ function Checkout() {
     setCheckoutError('');
     setCheckoutErrorFromRequest(false);
     try {
-      const payment = await createVNPayPaymentUrl(orderId);
+      const payment = await createVNPayPaymentUrl(orderId, { bankCode: 'VNPAYQR' });
       if (!isCurrentSession()) return;
       const paymentDraft = { ...draft, pendingVnpayAttemptStarted: true };
       persistDraft(paymentDraft);
       setDraft(paymentDraft);
-      window.location.assign(payment.paymentUrl);
+      const targetOrder = paymentRecoveryOrder || await getOrderById(orderId);
+      setVnpayModalData({
+        order: targetOrder,
+        vnpayData: payment,
+      });
     } catch (error) {
       if (isCurrentSession()) reportCheckoutError(error);
     } finally {
@@ -234,6 +249,19 @@ function Checkout() {
     }
   };
 
+  const handleVNPaySuccess = (confirmedOrder) => {
+    setVnpayModalData(null);
+    clearCartAfterOrder();
+    sessionStorage.removeItem(draftKeyRef.current);
+    setDraft({ address: EMPTY_ADDRESS, couponCode: '', paymentMethod: 'COD', idempotency: null, pendingVnpayOrderId: '' });
+    toast.success(`Thanh toán thành công đơn hàng #${confirmedOrder.orderCode}!`, { dedupeKey: `vnpay-success:${confirmedOrder._id}` });
+    window.location.assign(`/checkout/payment-result?vnp_TxnRef=${confirmedOrder.orderCode}&vnp_ResponseCode=00&vnp_TransactionStatus=00`);
+  };
+
+  const handleVNPayCancel = () => {
+    setVnpayModalData(null);
+  };
+
   const submitCheckout = async (event) => {
     event.preventDefault();
     setCheckoutError('');
@@ -299,12 +327,17 @@ function Checkout() {
         setDraft(paymentDraft);
         setPaymentRecoveryOrder(createdOrder);
         clearCartAfterOrder();
-        const payment = await createVNPayPaymentUrl(createdOrder._id);
+        const payment = await createVNPayPaymentUrl(createdOrder._id, { bankCode: 'VNPAYQR' });
         if (!isCurrentSession()) return;
         const paymentAttemptDraft = { ...paymentDraft, pendingVnpayAttemptStarted: true };
         persistDraft(paymentAttemptDraft);
         setDraft(paymentAttemptDraft);
-        window.location.assign(payment.paymentUrl);
+
+        // Hiển thị giao diện Modal VNPay QR thay vì điều hướng ngay lập tức
+        setVnpayModalData({
+          order: createdOrder,
+          vnpayData: payment,
+        });
       } else {
         setOrder(createdOrder);
         toast.success(`Đặt hàng thành công. Mã đơn hàng: ${createdOrder.orderCode}.`, { dedupeKey: `order:${createdOrder._id}` });
@@ -324,16 +357,19 @@ function Checkout() {
     <div className="storefront-page">
       <Header />
       <main className="checkout-page">
-        <div className="checkout-heading"><p className="section-kicker">NovaMart</p><h1>Thanh toán</h1></div>
+        <div className="checkout-heading">
+          <p className="section-kicker">Nova Fashion</p>
+          <h1>Thanh toán đơn hàng</h1>
+        </div>
         {order ? (
           <section className="checkout-confirmation" aria-label="Xác nhận đơn hàng">
             <p className="section-kicker">Đặt hàng thành công</p>
-            <h2>Cảm ơn bạn đã mua sắm.</h2>
+            <h2>Cảm ơn bạn đã mua sắm tại Nova Fashion.</h2>
             <p>Mã đơn hàng: <strong>{order.orderCode}</strong></p>
-            <p>Thanh toán khi nhận hàng (COD)</p>
+            <p>Phương thức: <strong>Thanh toán khi nhận hàng (COD)</strong></p>
             <p>Tổng thanh toán: <strong>{formatCurrency(order.finalAmount)}</strong></p>
             <Link className="checkout-primary-link" to={`/orders/${order._id}`}>Xem chi tiết đơn hàng</Link>
-            <Link to={`/track-order?code=${encodeURIComponent(order.orderCode)}${order.qrTrackingToken ? `&token=${encodeURIComponent(order.qrTrackingToken)}` : ''}`}>Theo dõi đơn hàng</Link>
+            <Link to={`/track-order?code=${encodeURIComponent(order.orderCode)}${order.qrTrackingToken ? `&token=${encodeURIComponent(order.qrTrackingToken)}` : ''}`}>Theo dõi tiến trình giao hàng</Link>
             <Link to="/products">Tiếp tục mua sắm</Link>
           </section>
         ) : draft.pendingVnpayOrderId ? (
@@ -387,7 +423,7 @@ function Checkout() {
                   )}
                   {paymentRecoveryOrder.status !== 'cancelled' && paymentRecoveryOrder.paymentStatus === 'unpaid' && !draft.pendingVnpayAttemptStarted && (
                     <button className="checkout-submit" type="button" onClick={() => redirectToVNPay(paymentRecoveryOrder._id)} disabled={isSubmitting}>
-                      {isSubmitting ? 'Đang kết nối VNPay...' : 'Tiếp tục đến VNPay'}
+                      {isSubmitting ? 'Đang kết nối VNPay...' : 'Tiếp tục thanh toán VNPay'}
                     </button>
                   )}
                   <button className="checkout-secondary-button" type="button" onClick={clearPendingPayment}>
@@ -398,67 +434,211 @@ function Checkout() {
                   </button>
                   <Link to={`/orders/${paymentRecoveryOrder._id}`}>Xem chi tiết đơn hàng</Link>
                 </div>
-                {paymentRecoveryOrder.paymentStatus === 'unpaid' && draft.pendingVnpayAttemptStarted && (
-                  <p>Giao dịch đã được chuyển đến VNPay; hãy đợi xác nhận hoặc kiểm tra lại trạng thái trước khi thử lại.</p>
-                )}
               </>
             ) : (
               <>
-                <h2>Không thể khôi phục đơn hàng.</h2>
-                <p>{paymentRecoveryError || 'Không tải được trạng thái đơn hàng đã tạo.'}</p>
+                <h2>Đang khôi phục đơn hàng VNPay trước đó...</h2>
+                <p>Đơn hàng đã được ghi nhận. Vui lòng chờ kiểm tra trạng thái trước khi thanh toán lại.</p>
+                {paymentRecoveryError && <p className="checkout-error" role="alert">{paymentRecoveryError}</p>}
+                {checkoutError && <p className="checkout-error" role={checkoutErrorFromRequest ? undefined : 'alert'}>{checkoutError}</p>}
                 <div className="checkout-payment-recovery-actions">
-                  <button className="checkout-submit" type="button" onClick={clearPendingPayment}>
-                    Xóa phiên thanh toán cũ & Tạo đơn mới
+                  <button className="checkout-secondary-button" type="button" onClick={refreshPendingPayment} disabled={isResumingPayment}>
+                    {isResumingPayment ? 'Đang thử lại...' : 'Thử kiểm tra lại'}
                   </button>
-                  <Link to="/my-orders">Mở đơn hàng của tôi</Link>
+                  <button className="checkout-secondary-button" type="button" onClick={clearPendingPayment}>
+                    Bỏ qua & Đặt đơn hàng mới
+                  </button>
                 </div>
               </>
             )}
           </section>
-        ) : cartStatus === 'loading' ? (
-          <section className="checkout-state" role="status"><h2>Đang tải giỏ hàng...</h2></section>
-        ) : cartStatus === 'error' ? (
-          <section className="checkout-state" role={errorAnnounced ? undefined : 'alert'}><h2>Không thể tải giỏ hàng.</h2><p>{cartError}</p><Link to="/cart">Quay lại giỏ hàng</Link></section>
-        ) : items.length === 0 ? (
-          <section className="checkout-state"><h2>Giỏ hàng của bạn đang trống.</h2><Link to="/products">Tiếp tục mua sắm</Link></section>
         ) : (
           <form className="checkout-layout" onSubmit={submitCheckout}>
-            <div className="checkout-form-column">
+            <div className="checkout-main-content">
+              {/* 1. THÔNG TIN NHẬN HÀNG */}
               <section className="checkout-card">
-                <h2>Thông tin giao hàng</h2>
-                <div className="checkout-fields">
-                  <label>Họ và tên người nhận<input name="fullName" autoComplete="name" value={draft.address.fullName} onChange={updateAddress} required /></label>
-                  <label>Số điện thoại<input name="phone" type="tel" autoComplete="tel" value={draft.address.phone} onChange={updateAddress} required /></label>
-                  <label className="checkout-field-wide">Địa chỉ<input name="address" autoComplete="street-address" value={draft.address.address} onChange={updateAddress} required /></label>
-                  <label>Tỉnh/Thành phố<input name="city" autoComplete="address-level1" value={draft.address.city} onChange={updateAddress} /></label>
-                  <label>Quận/Huyện<input name="district" autoComplete="address-level2" value={draft.address.district} onChange={updateAddress} /></label>
-                  <label>Phường/Xã<input name="ward" value={draft.address.ward} onChange={updateAddress} /></label>
-                  <label className="checkout-field-wide">Ghi chú<textarea name="notes" value={draft.address.notes} onChange={updateAddress} rows="3" /></label>
+                <div className="checkout-card-header">
+                  <div className="checkout-card-header-icon">📍</div>
+                  <div>
+                    <h2>Thông tin nhận hàng</h2>
+                  </div>
+                </div>
+                <div className="checkout-form-grid">
+                  <label className="checkout-field-col-3">
+                    <span>Họ và tên <strong className="checkout-required-star">*</strong></span>
+                    <input
+                      required
+                      name="fullName"
+                      placeholder="Ví dụ: Nguyễn Văn A"
+                      value={draft.address.fullName}
+                      onChange={updateAddress}
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                  <label className="checkout-field-col-3">
+                    <span>Số điện thoại <strong className="checkout-required-star">*</strong></span>
+                    <input
+                      required
+                      name="phone"
+                      placeholder="Ví dụ: 0912 345 678"
+                      value={draft.address.phone}
+                      onChange={updateAddress}
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                  <label className="checkout-full-width">
+                    <span>Địa chỉ chi tiết <strong className="checkout-required-star">*</strong></span>
+                    <input
+                      required
+                      name="address"
+                      placeholder="Số nhà, tên đường, tòa nhà/căn hộ..."
+                      value={draft.address.address}
+                      onChange={updateAddress}
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                  <label className="checkout-field-col-2">
+                    <span>Tỉnh / Thành phố</span>
+                    <input
+                      name="city"
+                      placeholder="Hà Nội, TP.HCM..."
+                      value={draft.address.city}
+                      onChange={updateAddress}
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                  <label className="checkout-field-col-2">
+                    <span>Quận / Huyện</span>
+                    <input
+                      name="district"
+                      placeholder="Quận 1, Hoàn Kiếm..."
+                      value={draft.address.district}
+                      onChange={updateAddress}
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                  <label className="checkout-field-col-2">
+                    <span>Phường / Xã</span>
+                    <input
+                      name="ward"
+                      placeholder="Phường Bến Nghé..."
+                      value={draft.address.ward}
+                      onChange={updateAddress}
+                      disabled={isSubmitting}
+                    />
+                  </label>
+                  <label className="checkout-full-width">
+                    <span>Ghi chú giao hàng</span>
+                    <textarea
+                      name="notes"
+                      rows={2}
+                      placeholder="Ghi chú thêm cho shipper (Ví dụ: Giao giờ hành chính, gọi trước khi đến...)"
+                      value={draft.address.notes}
+                      onChange={updateAddress}
+                      disabled={isSubmitting}
+                    />
+                  </label>
                 </div>
               </section>
 
+              {/* 2. MÃ GIẢM GIÁ */}
               <section className="checkout-card">
-                <h2>Mã giảm giá</h2>
-                <div className="checkout-coupon-row">
-                  <label className="visually-hidden" htmlFor="checkout-coupon">Mã giảm giá</label>
-                  <input id="checkout-coupon" value={draft.couponCode} onChange={(event) => { couponRequestRef.current += 1; setIsApplyingCoupon(false); updateDraft({ couponCode: event.target.value, idempotency: null }); setCouponPreview(null); setCouponError(''); }} placeholder="Nhập mã giảm giá" />
-                  <button type="button" onClick={applyCouponCode} disabled={isApplyingCoupon}>{isApplyingCoupon ? 'Đang kiểm tra...' : 'Áp dụng'}</button>
+                <div className="checkout-card-header">
+                  <div className="checkout-card-header-icon">🏷️</div>
+                  <div>
+                    <h2>Mã giảm giá & Khuyến mãi</h2>
+                  </div>
+                </div>
+                <div className="checkout-coupon-input-group">
+                  <input
+                    placeholder="NHẬP MÃ ƯU ĐÃI (FASHION50, OUTFIT10...)"
+                    value={draft.couponCode}
+                    onChange={(e) => updateDraft({ couponCode: e.target.value.toUpperCase() })}
+                    disabled={isSubmitting || isApplyingCoupon}
+                  />
+                  <button type="button" onClick={applyCouponCode} disabled={isSubmitting || isApplyingCoupon}>
+                    {isApplyingCoupon ? 'Đang kiểm tra...' : 'Áp dụng'}
+                  </button>
+                </div>
+                <div className="checkout-coupon-hints">
+                  <span>Mã gợi ý cho bạn:</span>
+                  <span className="checkout-coupon-tag" onClick={() => updateDraft({ couponCode: 'FASHION50' })}>FASHION50</span>
+                  <span className="checkout-coupon-tag" onClick={() => updateDraft({ couponCode: 'OUTFIT10' })}>OUTFIT10</span>
+                  <span className="checkout-coupon-tag" onClick={() => updateDraft({ couponCode: 'VIPSTYLE20' })}>VIPSTYLE20</span>
                 </div>
                 {couponError && <p className="checkout-error" role="alert">{couponError}</p>}
-                {couponPreview && <p className="checkout-coupon-success">Đã áp dụng {couponPreview.code}: giảm {formatCurrency(couponPreview.discountAmount)}.</p>}
+                {couponPreview && (
+                  <p className="checkout-coupon-success">
+                    ✓ Mã <strong>{couponPreview.code}</strong> hợp lệ! Giảm ngay <strong>{formatCurrency(couponPreview.discountAmount)}</strong>
+                  </p>
+                )}
               </section>
 
+              {/* 3. PHƯƠNG THỨC THANH TOÁN */}
               <section className="checkout-card">
-                <h2>Phương thức thanh toán</h2>
+                <div className="checkout-card-header">
+                  <div className="checkout-card-header-icon">💳</div>
+                  <div>
+                    <h2>Phương thức thanh toán</h2>
+                  </div>
+                </div>
                 <fieldset className="checkout-payment-options">
                   <legend className="visually-hidden">Chọn phương thức thanh toán</legend>
-                  <label><input type="radio" name="paymentMethod" value="COD" checked={draft.paymentMethod === 'COD'} onChange={() => updateDraft({ paymentMethod: 'COD', idempotency: null })} /><span>Thanh toán khi nhận hàng (COD)</span></label>
-                  <label><input type="radio" name="paymentMethod" value="VNPAY" checked={draft.paymentMethod === 'VNPAY'} onChange={() => updateDraft({ paymentMethod: 'VNPAY', idempotency: null })} /><span>Thanh toán trực tuyến qua VNPay</span></label>
+                  
+                  <label className={`checkout-payment-card ${draft.paymentMethod === 'COD' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="COD"
+                      checked={draft.paymentMethod === 'COD'}
+                      onChange={() => updateDraft({ paymentMethod: 'COD', idempotency: null })}
+                    />
+                    <div className="checkout-payment-card-body">
+                      <div className="checkout-payment-card-title">
+                        <span>📦</span> Thanh toán khi nhận hàng (COD)
+                      </div>
+                      <div className="checkout-payment-card-desc">
+                        Nhận hàng, kiểm tra sản phẩm trước khi thanh toán tiền mặt cho nhân viên giao hàng.
+                      </div>
+                    </div>
+                  </label>
+
+                  <label className={`checkout-payment-card ${draft.paymentMethod === 'VNPAY' ? 'active' : ''}`}>
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="VNPAY"
+                      checked={draft.paymentMethod === 'VNPAY'}
+                      onChange={() => updateDraft({ paymentMethod: 'VNPAY', idempotency: null })}
+                    />
+                    <div className="checkout-payment-card-body">
+                      <div className="checkout-payment-card-title">
+                        <span>⚡</span> Thanh toán trực tuyến qua VNPAY-QR
+                      </div>
+                      <div className="checkout-payment-card-desc">
+                        Quét mã VNPAY-QR qua ứng dụng Ngân hàng / Ví VNPAY hoặc thanh toán bằng Thẻ ATM nội địa.
+                      </div>
+                    </div>
+                  </label>
                 </fieldset>
+
                 {itemsWithoutSku.length > 0 && <p className="checkout-error" role="alert">Có {itemsWithoutSku.length} sản phẩm thiếu SKU; backend yêu cầu SKU khi tạo đơn hàng.</p>}
                 {!cartReady && <p className="checkout-error" role="status">Thanh toán cần kết nối máy chủ. Giỏ hàng ngoại tuyến chưa được gửi.</p>}
                 {checkoutError && <p className="checkout-error" role={checkoutErrorFromRequest ? undefined : 'alert'}>{checkoutError}</p>}
-                <button className="checkout-submit" type="submit" disabled={isSubmitting || !cartReady || itemsWithoutSku.length > 0}>{isSubmitting ? (draft.paymentMethod === 'VNPAY' ? 'Đang tạo đơn và kết nối VNPay...' : 'Đang tạo đơn hàng...') : (draft.paymentMethod === 'VNPAY' ? `Tiếp tục đến VNPay · ${formatCurrency(confirmedTotal)}` : `Đặt hàng · ${formatCurrency(confirmedTotal)}`)}</button>
+                
+                <button
+                  className="checkout-submit"
+                  type="submit"
+                  disabled={isSubmitting || !cartReady || itemsWithoutSku.length > 0}
+                >
+                  {isSubmitting ? (
+                    draft.paymentMethod === 'VNPAY' ? 'Đang tạo đơn và kết nối VNPay...' : 'Đang tạo đơn hàng...'
+                  ) : (
+                    draft.paymentMethod === 'VNPAY'
+                      ? `Tiếp tục thanh toán VNPAY · ${formatCurrency(confirmedTotal)}`
+                      : `Đặt hàng ngay · ${formatCurrency(confirmedTotal)}`
+                  )}
+                </button>
               </section>
             </div>
 
@@ -476,6 +656,14 @@ function Checkout() {
             </aside>
           </form>
         )}
+
+        <VNPayQrModal
+          isOpen={Boolean(vnpayModalData)}
+          order={vnpayModalData?.order}
+          vnpayData={vnpayModalData?.vnpayData}
+          onSuccess={handleVNPaySuccess}
+          onCancel={handleVNPayCancel}
+        />
       </main>
       <Footer />
     </div>

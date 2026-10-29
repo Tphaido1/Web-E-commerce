@@ -1,12 +1,13 @@
 // Mocked transport and hook unit regressions. These do not replace browser integration tests.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import axios from 'axios';
-import { clearAuthSession, getAuthSession, saveAuthSession } from '../src/services/authSession.js';
+import { getAuthSession, saveAuthSession } from '../src/services/authSession.js';
 import { resolveProductPrice } from '../src/utils/currency.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -463,9 +464,10 @@ async function checkoutHarness(create) {
     'Header.jsx': 'export default function Header() {}',
     'Footer.jsx': 'export default function Footer() {}',
     'CartItem.jsx': 'export default function CartItem() {}',
+    'VNPayQrModal.jsx': 'export default function VNPayQrModal() { return null; }',
     'CartContext.jsx': 'export const useCart = () => globalThis.__componentMocks.cart;',
     'authSession.js': 'export const getAuthSession = () => globalThis.__componentMocks.auth();',
-    'orderService.js': 'export const createOrder = (...args) => globalThis.__componentMocks.create(...args); export const applyCoupon = async () => {}; export const createVNPayPaymentUrl = async () => {}; export const getOrderById = async () => {};',
+    'orderService.js': 'export const createOrder = (...args) => globalThis.__componentMocks.create(...args); export const applyCoupon = async () => {}; export const createVNPayPaymentUrl = async () => {}; export const getOrderById = async () => {}; export const simulateSandboxSuccess = async () => {};',
   });
   const form = find(checkout.default(), (node) => node.type === 'form' && node.props.className === 'checkout-layout');
   assert.ok(form);
