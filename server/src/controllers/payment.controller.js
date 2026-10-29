@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const querystring = require('querystring');
+const QRCode = require('qrcode');
 const Order = require('../models/Order.model');
 const AuditLogService = require('../services/auditLog.service');
 const { getIo, notifyAdmin, notifyUser, notifyOrderUpdate } = require('../config/socket');
@@ -159,14 +160,32 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
     vnp_ExpireDate: expireDate,
   };
 
-  if (bankCode && bankCode.trim()) {
-    vnpParams['vnp_BankCode'] = bankCode.trim();
+  const selectedBankCode = bankCode !== undefined ? bankCode.trim() : 'VNPAYQR';
+  if (selectedBankCode && selectedBankCode !== 'ALL') {
+    vnpParams['vnp_BankCode'] = selectedBankCode;
   }
 
   const sortedParams = sortObject(vnpParams);
   const secureHash = calculateVNPaySecureHash(vnpParams, env.VNP_HASH_SECRET);
 
   const redirectUrl = `${env.VNP_URL}?${querystring.stringify(sortedParams, '&', '=', { encodeURIComponent: (value) => value })}&vnp_SecureHash=${secureHash}`;
+
+  // Sinh mã QR Code Base64 Data URL cho luồng thanh toán QR trên Frontend
+  let qrCodeDataUrl = null;
+  try {
+    qrCodeDataUrl = await QRCode.toDataURL(redirectUrl, {
+      errorCorrectionLevel: 'M',
+      margin: 2,
+      width: 320,
+      color: {
+        dark: '#182E28',
+        light: '#ffffff',
+      },
+    });
+  } catch (qrErr) {
+    // eslint-disable-next-line no-console
+    console.warn('[VNPay QR Warning] Không thể tạo QR code data URL:', qrErr.message);
+  }
 
   // Ghi nhận Audit Log
   await AuditLogService.logOrderChange({
@@ -177,7 +196,7 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
     details: {
       orderCode: order.orderCode,
       amount: order.finalAmount,
-      bankCode: bankCode || 'ALL',
+      bankCode: selectedBankCode || 'ALL',
       ipAddress: clientIp,
     },
     req,
@@ -185,8 +204,10 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
 
   return ApiResponse.success(res, 200, 'Tạo URL thanh toán VNPay thành công', {
     paymentUrl: redirectUrl,
+    qrCodeDataUrl,
     orderCode: order.orderCode,
     amount: order.finalAmount,
+    expiresAt: expireDate,
   });
 });
 
@@ -376,6 +397,80 @@ const vnpayIpn = async (req, res) => {
 };
 
 /**
+ * XỬ LÝ THANH TOÁN GIẢ LẬP SANDBOX (DÀNH CHO DEVELOPMENT & DEMO)
+ * POST /api/v1/payments/simulate-sandbox-success
+ */
+const simulateSandboxPayment = catchAsync(async (req, res) => {
+  if (env.NODE_ENV === 'production' && !env.ALLOW_SANDBOX_SIMULATION) {
+    throw Object.assign(new Error('Tính năng mô phỏng chỉ hoạt động ở môi trường Sandbox/Dev'), { statusCode: 403 });
+  }
+
+  const { orderId } = req.body;
+  if (!orderId) {
+    throw Object.assign(new Error('Vui lòng cung cấp mã đơn hàng (orderId)'), { statusCode: 400 });
+  }
+
+  let order = await Order.findById(orderId);
+  if (!order) {
+    throw Object.assign(new Error('Không tìm thấy đơn hàng'), { statusCode: 404 });
+  }
+
+  if (order.paymentStatus === 'paid') {
+    return ApiResponse.success(res, 200, 'Đơn hàng đã được thanh toán trước đó', order);
+  }
+
+  if (order.status === 'cancelled') {
+    throw Object.assign(new Error('Đơn hàng đã bị hủy'), { statusCode: 400 });
+  }
+
+  const fakeTxn = 'SIM-' + Date.now();
+  const committed = await commitPayment(order, 'paid', {
+    status: 'processing',
+    note: `Thanh toán thành công qua mô phỏng VNPay Sandbox. Mã GD: ${fakeTxn}`,
+    updatedAt: new Date(),
+  });
+
+  if (!committed) {
+    throw Object.assign(new Error('Không thể cập nhật trạng thái đơn hàng'), { statusCode: 409 });
+  }
+
+  order = committed;
+
+  // Ghi Audit Log
+  await AuditLogService.logPaymentTransaction({
+    orderId: order._id,
+    transactionNo: fakeTxn,
+    amount: order.finalAmount,
+    bankCode: 'VNPAYQR',
+    status: 'success',
+    responseCode: '00',
+    details: { source: 'VNPay Sandbox Simulation' },
+    req,
+  });
+
+  // Bắn sự kiện realtime
+  notifyAdmin('new_order', {
+    orderId: order._id,
+    orderCode: order.orderCode,
+    finalAmount: order.finalAmount,
+    customerName: order.shippingAddress.fullName,
+    paymentStatus: 'paid',
+    paymentMethod: 'VNPAY',
+  });
+  notifyOrderVendors(getIo(), order, 'new_order');
+  notifyUser(order.user.toString(), 'payment_success', {
+    orderId: order._id,
+    orderCode: order.orderCode,
+  });
+  notifyOrderUpdate(order._id.toString(), 'order_status_updated', {
+    orderId: order._id,
+    status: 'processing',
+  });
+
+  return ApiResponse.success(res, 200, 'Mô phỏng thanh toán VNPay Sandbox thành công', order);
+});
+
+/**
  * XEM LỊCH SỬ AUDIT LOG CỦA MỘT ĐƠN HÀNG (ADMIN / VENDOR)
  * GET /api/v1/payments/audit-logs/:orderId
  */
@@ -392,6 +487,7 @@ module.exports = {
   createVNPayPaymentUrl,
   vnpayReturn,
   vnpayIpn,
+  simulateSandboxPayment,
   getOrderAuditLogs,
   // Export helper functions for testing
   sortObject,

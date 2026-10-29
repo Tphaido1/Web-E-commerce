@@ -464,9 +464,10 @@ async function checkoutHarness(create) {
     'Header.jsx': 'export default function Header() {}',
     'Footer.jsx': 'export default function Footer() {}',
     'CartItem.jsx': 'export default function CartItem() {}',
+    'VNPayQrModal.jsx': 'export default function VNPayQrModal() { return null; }',
     'CartContext.jsx': 'export const useCart = () => globalThis.__componentMocks.cart;',
     'authSession.js': 'export const getAuthSession = () => globalThis.__componentMocks.auth();',
-    'orderService.js': 'export const createOrder = (...args) => globalThis.__componentMocks.create(...args); export const applyCoupon = async () => {}; export const createVNPayPaymentUrl = async () => {}; export const getOrderById = async () => {};',
+    'orderService.js': 'export const createOrder = (...args) => globalThis.__componentMocks.create(...args); export const applyCoupon = async () => {}; export const createVNPayPaymentUrl = async () => {}; export const getOrderById = async () => {}; export const simulateSandboxSuccess = async () => {};',
   });
   const form = find(checkout.default(), (node) => node.type === 'form' && node.props.className === 'checkout-layout');
   assert.ok(form);

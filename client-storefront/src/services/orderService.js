@@ -30,6 +30,8 @@ export async function trackOrder(orderCode, token, { signal } = {}) {
   return requireData(response.data?.data, 'Phản hồi tra cứu đơn hàng không hợp lệ.');
 }
 
+export const trackOrderByCode = trackOrder;
+
 export async function applyCoupon(code, orderTotal) {
   const response = await api.post('/coupons/apply', { code, orderTotal });
   const result = response.data?.data;
@@ -50,8 +52,8 @@ export async function createOrder(payload, idempotencyKey) {
   return order;
 }
 
-export async function createVNPayPaymentUrl(orderId) {
-  const response = await api.post('/payments/create-vnpay-url', { orderId });
+export async function createVNPayPaymentUrl(orderId, options = {}) {
+  const response = await api.post('/payments/create-vnpay-url', { orderId, ...options });
   const result = response.data?.data;
   if (!result?.paymentUrl || typeof result.paymentUrl !== 'string') {
     throw new Error('Phản hồi tạo liên kết thanh toán VNPay không hợp lệ.');
@@ -61,6 +63,11 @@ export async function createVNPayPaymentUrl(orderId) {
     throw new Error('Liên kết thanh toán VNPay không hợp lệ.');
   }
   return result;
+}
+
+export async function simulateSandboxSuccess(orderId) {
+  const response = await api.post('/payments/simulate-sandbox-success', { orderId });
+  return response.data?.data;
 }
 
 export async function processVNPayReturn(params, { signal } = {}) {
