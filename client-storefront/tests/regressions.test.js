@@ -1,12 +1,13 @@
 // Mocked transport and hook unit regressions. These do not replace browser integration tests.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import axios from 'axios';
-import { clearAuthSession, getAuthSession, saveAuthSession } from '../src/services/authSession.js';
+import { getAuthSession, saveAuthSession } from '../src/services/authSession.js';
 import { resolveProductPrice } from '../src/utils/currency.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

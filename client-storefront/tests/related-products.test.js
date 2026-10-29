@@ -2,6 +2,7 @@
 // controlled transport/hooks. Browser acceptance separately checks real API/layout.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { Buffer } from 'node:buffer';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
@@ -172,6 +173,8 @@ const reactMock = `
   export const useEffect = (...args) => globalThis.__relatedMocks.hooks.effect(...args);
   export const useMemo = (factory) => factory();
   export const useCallback = (callback) => callback;
+  export const createContext = (defaultValue) => ({ Provider: ({ children }) => children, _currentValue: defaultValue });
+  export const useContext = (ctx) => ctx?._currentValue ?? {};
 `;
 async function componentHarness(request, entry = 'src/components/RelatedProducts/RelatedProducts.jsx', extraMocks = {}) {
   const calls = [];
@@ -366,6 +369,7 @@ test('actual product detail mounts recommendations only for the product loaded f
     'ProductReviews.jsx': 'export default "product-reviews";',
     'RelatedProducts.jsx': 'export default "related-products";',
     'CartContext.jsx': 'export const useCart = () => ({ addItem: async () => true });',
+    'WishlistContext.jsx': 'export const useWishlist = () => ({ isWishlisted: () => false, toggleWishlist: () => {} });',
     'productService.js': 'export const getProductById = (...args) => globalThis.__relatedMocks.getDetail(...args);',
   });
   globalThis.__relatedMocks.routeId = 'first';
