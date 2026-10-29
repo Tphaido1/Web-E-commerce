@@ -291,6 +291,28 @@
   background: #0369a1;
 }
 
+.vnpay-btn-ncb {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #1e293b;
+  color: #ffffff;
+  border: 1px solid #334155;
+  border-radius: 0.625rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+.vnpay-btn-ncb:hover {
+  background: #0f172a;
+  border-color: #475569;
+}
+
 .vnpay-btn-simulate {
   width: 100%;
   padding: 0.6875rem 1rem;

@@ -223,7 +223,17 @@ export default function VNPayQrModal({
                   className="vnpay-btn-primary"
                   onClick={() => window.open(vnpayData.paymentUrl, '_blank')}
                 >
-                  🌐 Mở Cổng VNPay Sandbox (Trang Thanh Toán Web)
+                  🌐 Mở Cổng VNPay Sandbox (Tất Cả Phương Thức)
+                </button>
+              )}
+
+              {vnpayData?.ncbPaymentUrl && (
+                <button
+                  type="button"
+                  className="vnpay-btn-ncb"
+                  onClick={() => window.open(vnpayData.ncbPaymentUrl, '_blank')}
+                >
+                  💳 Mở Trang Nhập Thẻ Test NCB Trực Tiếp
                 </button>
               )}
 

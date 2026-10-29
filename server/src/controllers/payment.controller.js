@@ -160,8 +160,12 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
     vnp_ExpireDate: expireDate,
   };
 
-  const selectedBankCode = bankCode !== undefined ? bankCode.trim() : 'VNPAYQR';
-  if (selectedBankCode && selectedBankCode !== 'ALL') {
+  // Không ép cứng vnp_BankCode = VNPAYQR vì sandbox merchant sẽ bị lỗi 76 (Ngân hàng không hỗ trợ)
+  const selectedBankCode = (bankCode && bankCode.trim() && bankCode.trim().toUpperCase() !== 'ALL' && bankCode.trim().toUpperCase() !== 'VNPAYQR')
+    ? bankCode.trim()
+    : null;
+
+  if (selectedBankCode) {
     vnpParams['vnp_BankCode'] = selectedBankCode;
   }
 
@@ -169,6 +173,15 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
   const secureHash = calculateVNPaySecureHash(vnpParams, env.VNP_HASH_SECRET);
 
   const redirectUrl = `${env.VNP_URL}?${querystring.stringify(sortedParams, '&', '=', { encodeURIComponent: (value) => value })}&vnp_SecureHash=${secureHash}`;
+
+  // Link thanh toán trực tiếp qua thẻ test NCB Sandbox (bỏ qua bước chọn ngân hàng)
+  let ncbPaymentUrl = null;
+  if (!selectedBankCode) {
+    const ncbParams = { ...vnpParams, vnp_BankCode: 'NCB' };
+    const sortedNcbParams = sortObject(ncbParams);
+    const ncbHash = calculateVNPaySecureHash(ncbParams, env.VNP_HASH_SECRET);
+    ncbPaymentUrl = `${env.VNP_URL}?${querystring.stringify(sortedNcbParams, '&', '=', { encodeURIComponent: (value) => value })}&vnp_SecureHash=${ncbHash}`;
+  }
 
   // Sinh mã QR Code Base64 Data URL cho luồng thanh toán QR trên Frontend
   let qrCodeDataUrl = null;
@@ -204,6 +217,7 @@ const createVNPayPaymentUrl = catchAsync(async (req, res) => {
 
   return ApiResponse.success(res, 200, 'Tạo URL thanh toán VNPay thành công', {
     paymentUrl: redirectUrl,
+    ncbPaymentUrl,
     qrCodeDataUrl,
     orderCode: order.orderCode,
     amount: order.finalAmount,
