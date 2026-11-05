@@ -165,14 +165,10 @@ const checkout = catchAsync(async (req, res) => {
 
   // 6. THỰC HIỆN TRỪ TỒN KHO NGUYÊN TỬ KÈM CƠ CHẾ BỒI HOÀN FAIL-SAFE
   const successfullyDeducted = [];
-  const lowStockItems = [];
 
   try {
     for (const item of resolvedItems) {
       const inventoryDoc = await Inventory.deductStock(item.sku, item.quantity);
-      if (inventoryDoc && inventoryDoc.stock <= inventoryDoc.lowStockThreshold) {
-        lowStockItems.push(inventoryDoc);
-      }
       let source = 'inventory';
       if (!inventoryDoc) {
         const existingInventory = await Inventory.findOne({ sku: item.sku });
@@ -348,9 +344,6 @@ const checkout = catchAsync(async (req, res) => {
 
   if (typeof TelegramService.notifyNewOrder === 'function') {
     TelegramService.notifyNewOrder(orderSaved);
-  }
-  if (typeof TelegramService.notifyLowStock === 'function') {
-    lowStockItems.forEach((inv) => TelegramService.notifyLowStock(inv));
   }
 
   return ApiResponse.success(res, 201, 'Đặt hàng thành công', orderSaved);
@@ -596,10 +589,6 @@ const updateOrderStatus = catchAsync(async (req, res) => {
     });
     io.to('role_admin').emit('order_status_updated', { orderId: order._id, status: order.status });
     notifyOrderVendors(io, order, 'order_status_updated');
-  }
-
-  if (typeof TelegramService.notifyOrderStatus === 'function') {
-    TelegramService.notifyOrderStatus(order, oldStatus);
   }
 
   return ApiResponse.success(res, 200, `Cập nhật trạng thái đơn hàng thành [${status}] thành công`, sanitizeVendorOrder(order, req.user));

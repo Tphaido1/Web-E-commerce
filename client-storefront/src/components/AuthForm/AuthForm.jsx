@@ -13,6 +13,8 @@ function AuthForm({ mode }) {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(() => getAuthSession()?.remembered || false);
+  const rememberRef = useRef(remember);
+  rememberRef.current = remember;
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,7 +52,7 @@ function AuthForm({ mode }) {
       try {
         const response = await loginWithGoogle(idToken);
         if (!activeRef.current) return;
-        saveAuthSession(response, response?.user, remember);
+        saveAuthSession(response, response?.user, rememberRef.current);
         navigate(returnUrl, { replace: true });
       } catch (submitError) {
         if (activeRef.current) setError(submitError.message);
@@ -104,7 +106,17 @@ function AuthForm({ mode }) {
         script.addEventListener('load', setupGoogle);
       }
     }
-  }, [isLogin, navigate, remember, returnUrl]);
+
+    return () => {
+      try {
+        if (window.google?.accounts?.id?.cancel) {
+          window.google.accounts.id.cancel();
+        }
+      } catch (cancelError) {
+        // ignore cleanup error
+      }
+    };
+  }, [isLogin, navigate, returnUrl]);
 
   const updateField = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));

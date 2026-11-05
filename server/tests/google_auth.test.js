@@ -102,8 +102,8 @@ describe('Google Authentication (Google OAuth 2.0 / GSI)', () => {
     // Kiểm tra DB đã được liên kết
     const updatedUser = await User.findOne({ email: 'existing@example.com' }).select('+password');
     expect(updatedUser.googleId).toBe('google-sub-linked-789');
-    // Mật khẩu cũ vẫn còn nguyên và có thể so sánh được
-    expect(await updatedUser.comparePassword('OldPassword123!')).toBe(true);
+    // Mật khẩu cũ chưa xác thực được vô hiệu hóa để chống chiếm quyền (Pre-account takeover GA-05)
+    expect(await updatedUser.comparePassword('OldPassword123!')).toBe(false);
   });
 
   test('TC-BE-04: Từ chối đăng nhập nếu tài khoản bị khóa (isActive = false)', async () => {

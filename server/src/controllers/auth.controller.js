@@ -165,15 +165,26 @@ exports.googleLogin = async (req, res) => {
       throw error;
     }
 
-    if (requiredRole === 'admin' && user.role !== 'admin') {
+    // GA-06: Nếu tài khoản đã liên kết googleId nhưng googleId của token khác -> từ chối
+    if (user.googleId && user.googleId !== googleId) {
+      const error = new Error('Tài khoản Google này không khớp với tài khoản đã liên kết.');
+      error.statusCode = 409;
+      throw error;
+    }
+
+    // GA-07: Cho phép cả admin và vendor nếu đăng nhập khu vực quản trị
+    if (requiredRole === 'admin' && !['admin', 'vendor'].includes(user.role)) {
       const error = new Error('Tài khoản này không có quyền truy cập trang quản trị');
       error.statusCode = 403;
       throw error;
     }
 
     let needsSave = false;
+    // GA-05: Liên kết Google vào tài khoản đã có -> vô hiệu hóa mật khẩu cũ chưa qua xác minh
     if (!user.googleId) {
       user.googleId = googleId;
+      user.authProvider = 'google';
+      user.set('password', undefined);
       needsSave = true;
     }
     if (!user.avatar && avatar) {
@@ -188,20 +199,31 @@ exports.googleLogin = async (req, res) => {
       await user.save();
     }
   } else {
+    // Nếu chưa có tài khoản mà yêu cầu quyền quản trị
     if (requiredRole === 'admin') {
       const error = new Error('Tài khoản chưa được cấp quyền quản trị trong hệ thống');
       error.statusCode = 403;
       throw error;
     }
 
-    user = await User.create({
-      email,
-      name,
-      avatar,
-      googleId,
-      authProvider: 'google',
-      role: 'customer',
-    });
+    // GA-04: Xử lý race condition khi 2 callback đến cùng lúc (E11000 duplicate key)
+    try {
+      user = await User.create({
+        email,
+        name,
+        avatar,
+        googleId,
+        authProvider: 'google',
+        role: 'customer',
+      });
+    } catch (createErr) {
+      if (createErr.code === 11000) {
+        user = await User.findOne({ email });
+        if (!user) throw createErr;
+      } else {
+        throw createErr;
+      }
+    }
   }
 
   const tokens = await issueTokens(user);

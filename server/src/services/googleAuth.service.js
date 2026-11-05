@@ -10,9 +10,13 @@ const { OAuth2Client } = require('google-auth-library');
 const env = require('../config/env');
 
 let oauthClient = null;
+let currentClientId = null;
+
 const getClient = () => {
-  if (!oauthClient) {
-    oauthClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+  const clientId = process.env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID;
+  if (!oauthClient || currentClientId !== clientId) {
+    oauthClient = new OAuth2Client(clientId);
+    currentClientId = clientId;
   }
   return oauthClient;
 };
@@ -29,11 +33,18 @@ async function verifyGoogleIdToken(idToken) {
     throw error;
   }
 
+  const clientId = process.env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID;
+  if (!clientId || !clientId.trim()) {
+    const error = new Error('Máy chủ chưa được cấu hình GOOGLE_CLIENT_ID');
+    error.statusCode = 500;
+    throw error;
+  }
+
   try {
     const client = getClient();
     const ticket = await client.verifyIdToken({
       idToken,
-      audience: env.GOOGLE_CLIENT_ID || undefined,
+      audience: clientId,
     });
 
     const payload = ticket.getPayload();
@@ -67,4 +78,3 @@ async function verifyGoogleIdToken(idToken) {
 module.exports = {
   verifyGoogleIdToken,
 };
-
