@@ -35,8 +35,8 @@ async function verifyGoogleIdToken(idToken) {
 
   const clientId = process.env.GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID;
   if (!clientId || !clientId.trim()) {
-    const error = new Error('Máy chủ chưa được cấu hình GOOGLE_CLIENT_ID');
-    error.statusCode = 500;
+    const error = new Error('Dịch vụ đăng nhập Google tạm thời chưa khả dụng do máy chủ chưa cấu hình GOOGLE_CLIENT_ID');
+    error.statusCode = 503;
     throw error;
   }
 

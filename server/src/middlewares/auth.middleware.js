@@ -27,6 +27,13 @@ const protect = catchAsync(async (req, res, next) => {
     throw error;
   }
 
+  // Thu hồi access token cũ nếu tokenVersion không khớp (FR-01)
+  if ((payload.tokenVersion || 0) !== (user.tokenVersion || 0)) {
+    const error = new Error('Phiên đăng nhập đã hết hiệu lực');
+    error.statusCode = 401;
+    throw error;
+  }
+
   req.user = user;
   return next();
 });
@@ -42,7 +49,7 @@ const optionalProtect = catchAsync(async (req, res, next) => {
     const payload = jwt.verify(accessToken, env.JWT_SECRET);
     if (payload.type === 'access') {
       const user = await User.findById(payload.sub);
-      if (user && user.isActive !== false) {
+      if (user && user.isActive !== false && (payload.tokenVersion || 0) === (user.tokenVersion || 0)) {
         req.user = user;
       }
     }

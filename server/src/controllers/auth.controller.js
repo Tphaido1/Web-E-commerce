@@ -10,7 +10,12 @@ const { verifyGoogleIdToken } = require('../services/googleAuth.service');
 const createAccessToken = (user) => {
   // Access token có thời hạn ngắn và secret riêng cho request API.
   return jwt.sign(
-    { sub: user._id.toString(), role: user.role, type: 'access' },
+    {
+      sub: user._id.toString(),
+      role: user.role,
+      type: 'access',
+      tokenVersion: user.tokenVersion || 0,
+    },
     env.JWT_SECRET,
     { expiresIn: env.JWT_EXPIRES_IN, jwtid: randomUUID() }
   );
@@ -38,15 +43,33 @@ const sanitizeUser = (user) => ({
 // bcrypt only considers 72 bytes: digest the entire JWT before hashing/comparing.
 const refreshDigest = (token) => createHash('sha256').update(token).digest('hex');
 
-const issueTokens = async (user, expectedRefreshHash) => {
+const issueTokens = async (user, expectedRefreshHash, { keepExisting = false } = {}) => {
   const accessToken = createAccessToken(user);
   const refreshToken = createRefreshToken(user);
 
   // Chỉ lưu hash refresh token, không lưu token plain trong database.
   const refreshHash = await bcrypt.hash(refreshDigest(refreshToken), 12);
   const filter = { _id: user._id, isActive: { $ne: false } };
-  if (expectedRefreshHash !== undefined) filter.refreshToken = expectedRefreshHash;
-  const updated = await User.findOneAndUpdate(filter, { $set: { refreshToken: refreshHash } });
+  if (expectedRefreshHash !== undefined) {
+    filter.$or = [
+      { refreshToken: expectedRefreshHash },
+      { refreshTokens: expectedRefreshHash },
+    ];
+  }
+
+  let update;
+  if (keepExisting) {
+    update = {
+      $set: { refreshToken: refreshHash },
+      $push: { refreshTokens: { $each: [refreshHash], $slice: -5 } },
+    };
+  } else {
+    update = {
+      $set: { refreshToken: refreshHash, refreshTokens: [refreshHash] },
+    };
+  }
+
+  const updated = await User.findOneAndUpdate(filter, update, { new: true });
   if (!updated) {
     const error = new Error('Refresh token không hợp lệ hoặc đã bị thu hồi');
     error.statusCode = 401;
@@ -128,19 +151,68 @@ exports.refreshToken = async (req, res) => {
     throw error;
   }
 
-  const user = await User.findById(payload.sub).select('+refreshToken');
-  if (!user || user.isActive === false || !user.refreshToken || !(await bcrypt.compare(refreshDigest(refreshToken), user.refreshToken))) {
+  const user = await User.findById(payload.sub).select('+refreshToken +refreshTokens');
+  if (!user || user.isActive === false) {
     const error = new Error('Refresh token không hợp lệ hoặc đã bị thu hồi');
     error.statusCode = 401;
     throw error;
   }
 
-  const tokens = await issueTokens(user, user.refreshToken);
-  return ApiResponse.success(res, 200, 'Làm mới token thành công', tokens);
+  const tokenDigest = refreshDigest(refreshToken);
+  const candidateHashes = [user.refreshToken, ...(user.refreshTokens || [])].filter(Boolean);
+
+  let matchedHash = null;
+  for (const h of candidateHashes) {
+    if (await bcrypt.compare(tokenDigest, h)) {
+      matchedHash = h;
+      break;
+    }
+  }
+
+  if (!matchedHash) {
+    const error = new Error('Refresh token không hợp lệ hoặc đã bị thu hồi');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const newAccessToken = createAccessToken(user);
+  const newRefreshToken = createRefreshToken(user);
+  const newRefreshHash = await bcrypt.hash(refreshDigest(newRefreshToken), 12);
+
+  // Xoay vòng nguyên tử: thu hồi matchedHash và cập nhật hash mới
+  const updated = await User.findOneAndUpdate(
+    {
+      _id: user._id,
+      isActive: { $ne: false },
+      $or: [{ refreshToken: matchedHash }, { refreshTokens: matchedHash }],
+    },
+    {
+      $set: { refreshToken: newRefreshHash },
+      $pull: { refreshTokens: matchedHash },
+    }
+  );
+
+  if (!updated) {
+    const error = new Error('Refresh token không hợp lệ hoặc đã bị thu hồi');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  await User.findByIdAndUpdate(user._id, {
+    $push: { refreshTokens: { $each: [newRefreshHash], $slice: -5 } },
+  });
+
+  return ApiResponse.success(res, 200, 'Làm mới token thành công', {
+    token: newAccessToken,
+    accessToken: newAccessToken,
+    refreshToken: newRefreshToken,
+  });
 };
 
 exports.logout = async (req, res) => {
-  await User.findByIdAndUpdate(req.user._id, { $unset: { refreshToken: 1 } });
+  await User.findByIdAndUpdate(req.user._id, {
+    $unset: { refreshToken: 1, refreshTokens: 1 },
+  });
   return ApiResponse.success(res, 200, 'Đăng xuất thành công');
 };
 
@@ -157,6 +229,7 @@ exports.googleLogin = async (req, res) => {
   let user = await User.findOne({
     $or: [{ googleId }, { email }],
   });
+  let isNewlyLinked = false;
 
   if (user) {
     if (user.isActive === false) {
@@ -180,11 +253,20 @@ exports.googleLogin = async (req, res) => {
     }
 
     let needsSave = false;
-    // GA-05: Liên kết Google vào tài khoản đã có -> vô hiệu hóa mật khẩu cũ chưa qua xác minh
+    // GA-05 & FR-01: Liên kết Google vào tài khoản đã có -> vô hiệu hóa mật khẩu cũ và thu hồi Access Token (FR-01)
     if (!user.googleId) {
       user.googleId = googleId;
-      user.authProvider = 'google';
-      user.set('password', undefined);
+      isNewlyLinked = true;
+      // Tăng tokenVersion để vô hiệu hóa ngay lập tức mọi Access Token cũ của kẻ xấu (FR-01)
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+      // Thu hồi toàn bộ refresh token cũ trước đó của kẻ xấu
+      user.refreshToken = null;
+      user.refreshTokens = [];
+      // Chỉ xóa mật khẩu của khách hàng (customer). Giữ nguyên mật khẩu cho admin/vendor để có lối vào dự phòng
+      if (user.role === 'customer') {
+        user.authProvider = 'google';
+        user.set('password', undefined);
+      }
       needsSave = true;
     }
     if (!user.avatar && avatar) {
@@ -226,7 +308,9 @@ exports.googleLogin = async (req, res) => {
     }
   }
 
-  const tokens = await issueTokens(user);
+  // FR-03: Với người dùng mới hoặc đăng nhập lại, keepExisting: true để các callback song song không ghi đè refresh token của nhau.
+  // Khi tài khoản lần đầu liên kết (isNewlyLinked), keepExisting: false để xóa sổ mọi refresh token cũ của kẻ xấu (FR-01).
+  const tokens = await issueTokens(user, undefined, { keepExisting: !isNewlyLinked });
   return ApiResponse.success(res, 200, 'Đăng nhập Google thành công', {
     user: sanitizeUser(user),
     ...tokens,

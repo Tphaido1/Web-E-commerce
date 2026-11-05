@@ -92,6 +92,10 @@ const changePassword = catchAsync(async (req, res) => {
   const user = await User.findById(req.user._id).select('+password');
   if (!user) throw httpError('User not found', 404);
 
+  if (!user.password) {
+    throw httpError('Tài khoản này đăng nhập qua Google và chưa có mật khẩu', 400);
+  }
+
   const isMatch = await user.comparePassword(currentPassword);
   if (!isMatch) {
     throw httpError('Mật khẩu hiện tại không chính xác', 400);

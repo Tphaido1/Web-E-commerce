@@ -36,6 +36,9 @@ const startServer = async () => {
   httpServer.listen(env.PORT, () => {
     console.log(`🚀 Server đang chạy ở môi trường [${env.NODE_ENV}] - cổng ${env.PORT}`);
     console.log(`   API base URL: http://localhost:${env.PORT}/api/v1`);
+    if (!env.GOOGLE_CLIENT_ID && env.NODE_ENV === 'production') {
+      console.warn('⚠️ [Cảnh báo Cấu hình] GOOGLE_CLIENT_ID chưa được thiết lập. Tính năng đăng nhập Google sẽ tạm ngắt.');
+    }
     TelegramService.startBot();
   });
 };
