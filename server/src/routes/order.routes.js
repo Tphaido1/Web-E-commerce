@@ -6,6 +6,7 @@ const {
   trackOrderByCode,
   getAllOrders,
   updateOrderStatus,
+  updatePaymentStatus,
 } = require('../controllers/order.controller');
 const { protect, checkRole } = require('../middlewares/auth.middleware');
 const { checkoutRateLimiter } = require('../middlewares/rateLimiter');
@@ -25,5 +26,6 @@ router.get('/:id', getOrderById);
 // 3. Các routes dành riêng cho Quản trị viên (Admin / Vendor)
 router.get('/', checkRole('admin', 'vendor'), getAllOrders);
 router.patch('/:id/status', checkRole('admin', 'vendor'), updateOrderStatus);
+router.patch('/:id/payment-status', checkRole('admin', 'vendor'), updatePaymentStatus);
 
 module.exports = router;

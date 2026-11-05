@@ -14,9 +14,26 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Mật khẩu là bắt buộc'],
+      required: [
+        function () {
+          return !this.googleId && this.authProvider !== 'google';
+        },
+        'Mật khẩu là bắt buộc đối với tài khoản thông thường',
+      ],
       minlength: [6, 'Mật khẩu phải có ít nhất 6 ký tự'],
       select: false,
+    },
+    googleId: {
+      type: String,
+      default: null,
+      sparse: true,
+      index: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+      index: true,
     },
     role: {
       type: String,
@@ -61,13 +78,14 @@ const userSchema = new mongoose.Schema(
 
 // Chỉ hash mật khẩu khi tạo mới hoặc khi mật khẩu bị thay đổi.
 userSchema.pre('save', async function hashPassword(next) {
-  if (!this.isModified('password')) return next();
+  if (!this.password || !this.isModified('password')) return next();
 
   this.password = await bcrypt.hash(this.password, 12);
   return next();
 });
 
 userSchema.methods.comparePassword = function comparePassword(candidatePassword) {
+  if (!this.password) return false;
   return bcrypt.compare(candidatePassword, this.password);
 };
 

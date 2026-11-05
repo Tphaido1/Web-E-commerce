@@ -1,6 +1,6 @@
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
-import { Alert, Button, Form, Input, Typography, message } from 'antd';
-import { useEffect, useState } from 'react';
+import { Alert, Button, Divider, Form, Input, Typography, message } from 'antd';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService.js';
 
@@ -10,6 +10,10 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(location.state?.error || '');
   const [session, setSession] = useState(() => authService.getSession());
+  const googleButtonRef = useRef(null);
+  const submittingRef = useRef(false);
+  const activeRef = useRef(true);
+
   const returnPath = location.state?.from;
   const destination = typeof returnPath === 'string'
     && returnPath.startsWith('/') && !returnPath.startsWith('//')
@@ -17,6 +21,86 @@ function Login() {
     ? returnPath : '/dashboard';
 
   useEffect(() => authService.subscribe(setSession), []);
+
+  useEffect(() => {
+    activeRef.current = true;
+    return () => { activeRef.current = false; };
+  }, []);
+
+  const handleGoogleLogin = async (idToken) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setLoading(true);
+    setError('');
+    try {
+      await authService.loginWithGoogle(idToken);
+      if (!activeRef.current) return;
+      message.success('Chào mừng bạn quay lại NOVA Commerce');
+      navigate(destination, { replace: true });
+    } catch (googleError) {
+      if (activeRef.current) {
+        setError(
+          googleError.response?.data?.message
+          || googleError.message
+          || 'Không thể đăng nhập bằng Google.',
+        );
+      }
+    } finally {
+      submittingRef.current = false;
+      if (activeRef.current) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleClientId) return;
+
+    const setupGoogle = () => {
+      if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+      try {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: (response) => {
+            if (response?.credential) {
+              handleGoogleLogin(response.credential);
+            }
+          },
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: 386,
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+        });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[Google Auth Admin Warning]', err.message);
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      setupGoogle();
+    } else {
+      const scriptId = 'google-gsi-script';
+      let script = document.getElementById(scriptId);
+      if (!script) {
+        script = document.createElement('script');
+        script.id = scriptId;
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = setupGoogle;
+        document.body.appendChild(script);
+      } else {
+        script.addEventListener('load', setupGoogle);
+      }
+    }
+  }, [destination, navigate]);
 
   const handleSubmit = async (credentials) => {
     setError('');
@@ -62,6 +146,22 @@ function Login() {
             </Form.Item>
             <Button type="primary" htmlType="submit" size="large" block loading={loading}>Đăng nhập</Button>
           </Form>
+
+          {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            <>
+              <Divider plain style={{ margin: '20px 0', color: '#8c8c8c', fontSize: 13 }}>
+                Hoặc
+              </Divider>
+              <div
+                ref={googleButtonRef}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  minHeight: 40,
+                }}
+              />
+            </>
+          )}
         </div>
       </section>
     </main>

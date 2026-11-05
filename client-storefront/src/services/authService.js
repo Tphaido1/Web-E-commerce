@@ -23,6 +23,15 @@ export async function register(payload) {
   }
 }
 
+export async function loginWithGoogle(idToken) {
+  try {
+    const response = await api.post('/auth/google', { idToken }, { skipAuthRefresh: true });
+    return response.data?.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Đăng nhập bằng Google không thành công. Vui lòng thử lại.'));
+  }
+}
+
 export async function logout() {
   const session = getAuthSession();
   const sessionId = session?.sessionId;

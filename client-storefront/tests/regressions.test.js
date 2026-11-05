@@ -599,7 +599,7 @@ test('duplicate login submits and a late login response cannot overwrite a newer
   };
   const component = await loadComponent('src/components/AuthForm/AuthForm.jsx', {
     'react-router-dom': 'export const Link = "a"; export const useNavigate = () => () => {}; export const useLocation = () => ({ state: { from: { pathname: "/my-orders", search: "?page=2", hash: "#history" } } });',
-    'authService.js': 'export const login = (...args) => globalThis.__componentMocks.login(...args); export const register = async () => {};',
+    'authService.js': 'export const login = (...args) => globalThis.__componentMocks.login(...args); export const register = async () => {}; export const loginWithGoogle = async () => {};',
     'authSession.js': 'export const getAuthSession = () => globalThis.__componentMocks.auth(); export const saveAuthSession = (...args) => globalThis.__componentMocks.save(...args); export const subscribeAuthSession = () => () => {};',
   });
   const form = find(component.default({ mode: 'login' }), (node) => node.type === 'form');

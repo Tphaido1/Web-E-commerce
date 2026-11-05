@@ -25,6 +25,7 @@ const env = {
   VNP_HASH_SECRET: process.env.VNP_HASH_SECRET || '',
   VNP_URL: process.env.VNP_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
   VNP_RETURN_URL: process.env.VNP_RETURN_URL || 'http://localhost:5173/checkout/payment-result',
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
 };
 
 // Danh sách các biến bắt buộc phải có, nếu thiếu sẽ dừng server ngay lập tức

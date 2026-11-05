@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { login, register } from '../../services/authService.js';
+import { login, loginWithGoogle, register } from '../../services/authService.js';
 import { getAuthSession, saveAuthSession, subscribeAuthSession } from '../../services/authSession.js';
 import './AuthForm.css';
 
@@ -18,6 +18,7 @@ function AuthForm({ mode }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const activeRef = useRef(true);
+  const googleButtonRef = useRef(null);
   const from = location.state?.from;
   const returnUrl = from?.pathname?.startsWith('/') && !from.pathname.startsWith('//')
     ? `${from.pathname}${from.search || ''}${from.hash || ''}`
@@ -35,6 +36,75 @@ function AuthForm({ mode }) {
     redirectAuthenticated(getAuthSession());
     return subscribeAuthSession(redirectAuthenticated);
   }, [navigate, returnUrl]);
+
+  useEffect(() => {
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!googleClientId) return;
+
+    const handleGoogleCallback = async (googleResponse) => {
+      const idToken = googleResponse?.credential;
+      if (!idToken || submittingRef.current) return;
+      submittingRef.current = true;
+      setIsSubmitting(true);
+      setError('');
+      try {
+        const response = await loginWithGoogle(idToken);
+        if (!activeRef.current) return;
+        saveAuthSession(response, response?.user, remember);
+        navigate(returnUrl, { replace: true });
+      } catch (submitError) {
+        if (activeRef.current) setError(submitError.message);
+      } finally {
+        submittingRef.current = false;
+        if (activeRef.current) setIsSubmitting(false);
+      }
+    };
+
+    const setupGoogle = () => {
+      if (!window.google?.accounts?.id || !googleButtonRef.current) return;
+      try {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleCallback,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: 386,
+          text: isLogin ? 'signin_with' : 'signup_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+        });
+
+        // Kích hoạt Google One Tap
+        window.google.accounts.id.prompt();
+      } catch (setupError) {
+        // eslint-disable-next-line no-console
+        console.warn('[Google Auth Warning]', setupError.message);
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      setupGoogle();
+    } else {
+      const scriptId = 'google-gsi-script';
+      let script = document.getElementById(scriptId);
+      if (!script) {
+        script = document.createElement('script');
+        script.id = scriptId;
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = setupGoogle;
+        document.body.appendChild(script);
+      } else {
+        script.addEventListener('load', setupGoogle);
+      }
+    }
+  }, [isLogin, navigate, remember, returnUrl]);
 
   const updateField = (event) => {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -108,6 +178,12 @@ function AuthForm({ mode }) {
           {success && <p className="form-message success" role="status">{success}</p>}
           <button className="auth-submit" type="submit" disabled={isSubmitting}>{isSubmitting ? 'Đang xử lý...' : isLogin ? 'Đăng nhập' : 'Đăng ký'}</button>
         </form>
+        <div className="auth-divider">
+          <span>HOẶC</span>
+        </div>
+        <div className="google-auth-wrapper">
+          <div ref={googleButtonRef} className="google-signin-btn" />
+        </div>
         <p className="auth-switch">{isLogin ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'} <Link to={isLogin ? '/register' : '/login'} state={location.state}>{isLogin ? 'Đăng ký' : 'Đăng nhập'}</Link></p>
       </section>
     </main>

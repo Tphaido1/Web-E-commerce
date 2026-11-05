@@ -15,6 +15,7 @@ const router = express.Router();
 
 router.post('/register', authRateLimiter, catchAsync(authController.register));
 router.post('/login', authRateLimiter, catchAsync(authController.login));
+router.post('/google', authRateLimiter, catchAsync(authController.googleLogin));
 router.post('/refresh-token', catchAsync(authController.refreshToken));
 router.post('/logout', protect, catchAsync(authController.logout));
 

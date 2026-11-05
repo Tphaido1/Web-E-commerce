@@ -5,6 +5,7 @@ const Inventory = require('../models/Inventory.model');
 const Cart = require('../models/Cart.model');
 const Coupon = require('../models/Coupon.model');
 const EmailService = require('../services/email.service');
+const TelegramService = require('../services/telegram.service');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
 const { resolveCartItem, resolveItemPrice, badRequest, parseQuantity } = require('../utils/cartItem.util');
@@ -204,6 +205,7 @@ const syncOfflineOrders = catchAsync(async (req, res) => {
 
       // Kích hoạt email & QR bất đồng bộ
       EmailService.sendOrderConfirmationEmail(newOrder, req.user.email).catch(() => {});
+      TelegramService.notifyNewOrder(newOrder);
 
       syncedOrders.push({
         clientOrderId,

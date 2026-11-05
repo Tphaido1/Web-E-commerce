@@ -42,8 +42,14 @@ const paymentStatusTranslations = {
   unpaid: 'Chưa thanh toán',
   paid: 'Đã thanh toán',
   failed: 'Thất bại',
-  refunded: 'Đã hoàn tiền',
+  refunded: 'Hoàn hàng',
 };
+
+const codPaymentStatusOptions = [
+  { value: 'unpaid', label: 'Chưa thanh toán' },
+  { value: 'paid', label: 'Đã thanh toán' },
+  { value: 'refunded', label: 'Hoàn hàng' },
+];
 
 const formatStatus = (status = '') => (
   statusTranslations[status] || paymentStatusTranslations[status] || (status.charAt(0).toUpperCase() + status.slice(1))
@@ -79,6 +85,7 @@ function Orders() {
   const [cancelledReason, setCancelledReason] = useState('');
   const [updateError, setUpdateError] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [updatingPaymentId, setUpdatingPaymentId] = useState(null);
   const updateInFlight = useRef(false);
   const canManageOrders = ['admin', 'vendor'].includes(user?.role);
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -181,6 +188,20 @@ function Orders() {
     }
   };
 
+  const handlePaymentStatusChange = async (order, nextPaymentStatus) => {
+    if (!order || order.paymentStatus === nextPaymentStatus) return;
+    setUpdatingPaymentId(order._id);
+    try {
+      await orderService.updatePaymentStatus(order._id, { paymentStatus: nextPaymentStatus });
+      message.success(`Đã cập nhật thanh toán đơn hàng ${order.orderCode} sang "${formatStatus(nextPaymentStatus)}".`);
+      setReload((current) => current + 1);
+    } catch (error) {
+      message.error(getErrorMessage(error));
+    } finally {
+      setUpdatingPaymentId(null);
+    }
+  };
+
   const columns = useMemo(() => [
     {
       title: 'Mã đơn hàng',
@@ -214,12 +235,35 @@ function Orders() {
     {
       title: 'Thanh toán',
       key: 'payment',
-      render: (_, order) => (
-        <div>
-          <span>{order.paymentMethod || '—'}</span>
-          <span className="table-secondary">{formatStatus(order.paymentStatus)}</span>
-        </div>
-      ),
+      render: (_, order) => {
+        if (order.paymentMethod === 'COD') {
+          return (
+            <Space direction="vertical" size={4}>
+              <span style={{ fontWeight: 500 }}>COD</span>
+              {canManageOrders && order.canUpdateStatus !== false ? (
+                <Select
+                  size="small"
+                  aria-label={`Trạng thái thanh toán đơn ${order.orderCode}`}
+                  value={order.paymentStatus || 'unpaid'}
+                  loading={updatingPaymentId === order._id}
+                  disabled={updatingPaymentId === order._id}
+                  options={codPaymentStatusOptions}
+                  onChange={(nextStatus) => handlePaymentStatusChange(order, nextStatus)}
+                  style={{ minWidth: 140 }}
+                />
+              ) : (
+                <span className="table-secondary">{formatStatus(order.paymentStatus || 'unpaid')}</span>
+              )}
+            </Space>
+          );
+        }
+        return (
+          <div>
+            <span>{order.paymentMethod || '—'}</span>
+            <span className="table-secondary">{formatStatus(order.paymentStatus)}</span>
+          </div>
+        );
+      },
     },
     {
       title: 'Trạng thái',
@@ -266,7 +310,7 @@ function Orders() {
         },
       }]
       : []),
-  ], [canManageOrders, updating]);
+  ], [canManageOrders, updating, updatingPaymentId]);
 
   const detailItems = selectedOrder?.items || [];
   const address = selectedOrder?.shippingAddress || {};

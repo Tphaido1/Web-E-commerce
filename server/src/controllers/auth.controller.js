@@ -5,6 +5,7 @@ const { createHash, randomUUID } = require('crypto');
 const env = require('../config/env');
 const User = require('../models/User.model');
 const ApiResponse = require('../utils/apiResponse');
+const { verifyGoogleIdToken } = require('../services/googleAuth.service');
 
 const createAccessToken = (user) => {
   // Access token có thời hạn ngắn và secret riêng cho request API.
@@ -141,4 +142,71 @@ exports.refreshToken = async (req, res) => {
 exports.logout = async (req, res) => {
   await User.findByIdAndUpdate(req.user._id, { $unset: { refreshToken: 1 } });
   return ApiResponse.success(res, 200, 'Đăng xuất thành công');
+};
+
+exports.googleLogin = async (req, res) => {
+  const { idToken, requiredRole } = req.body || {};
+
+  if (!idToken || typeof idToken !== 'string' || !idToken.trim()) {
+    return ApiResponse.error(res, 400, 'Google ID token là bắt buộc');
+  }
+
+  const googleProfile = await verifyGoogleIdToken(idToken.trim());
+  const { googleId, email, name, avatar } = googleProfile;
+
+  let user = await User.findOne({
+    $or: [{ googleId }, { email }],
+  });
+
+  if (user) {
+    if (user.isActive === false) {
+      const error = new Error('Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (requiredRole === 'admin' && user.role !== 'admin') {
+      const error = new Error('Tài khoản này không có quyền truy cập trang quản trị');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    let needsSave = false;
+    if (!user.googleId) {
+      user.googleId = googleId;
+      needsSave = true;
+    }
+    if (!user.avatar && avatar) {
+      user.avatar = avatar;
+      needsSave = true;
+    }
+    if (!user.name && name) {
+      user.name = name;
+      needsSave = true;
+    }
+    if (needsSave) {
+      await user.save();
+    }
+  } else {
+    if (requiredRole === 'admin') {
+      const error = new Error('Tài khoản chưa được cấp quyền quản trị trong hệ thống');
+      error.statusCode = 403;
+      throw error;
+    }
+
+    user = await User.create({
+      email,
+      name,
+      avatar,
+      googleId,
+      authProvider: 'google',
+      role: 'customer',
+    });
+  }
+
+  const tokens = await issueTokens(user);
+  return ApiResponse.success(res, 200, 'Đăng nhập Google thành công', {
+    user: sanitizeUser(user),
+    ...tokens,
+  });
 };

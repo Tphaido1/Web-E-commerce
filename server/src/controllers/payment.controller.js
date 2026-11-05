@@ -3,6 +3,7 @@ const querystring = require('querystring');
 const QRCode = require('qrcode');
 const Order = require('../models/Order.model');
 const AuditLogService = require('../services/auditLog.service');
+const TelegramService = require('../services/telegram.service');
 const { getIo, notifyAdmin, notifyUser, notifyOrderUpdate } = require('../config/socket');
 const { canManageWholeOrder, notifyOrderVendors } = require('../utils/vendorScope.util');
 const ApiResponse = require('../utils/apiResponse');
@@ -303,6 +304,7 @@ const vnpayReturn = catchAsync(async (req, res) => {
         paymentStatus: 'paid',
         paymentMethod: 'VNPAY',
       });
+      TelegramService.notifyPaymentSuccess(currentOrder);
       notifyOrderVendors(getIo(), currentOrder, 'new_order');
       notifyUser(currentOrder.user.toString(), 'payment_success', {
         orderId: currentOrder._id,
@@ -421,6 +423,7 @@ const vnpayIpn = async (req, res) => {
         paymentStatus: 'paid',
         paymentMethod: 'VNPAY',
       });
+      TelegramService.notifyPaymentSuccess(order);
       notifyOrderVendors(getIo(), order, 'new_order');
       notifyUser(order.user.toString(), 'payment_success', {
         orderId: order._id,
@@ -512,6 +515,7 @@ const simulateSandboxPayment = catchAsync(async (req, res) => {
     paymentStatus: 'paid',
     paymentMethod: 'VNPAY',
   });
+  TelegramService.notifyPaymentSuccess(order);
   notifyOrderVendors(getIo(), order, 'new_order');
   notifyUser(order.user.toString(), 'payment_success', {
     orderId: order._id,

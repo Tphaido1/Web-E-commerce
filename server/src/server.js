@@ -17,6 +17,7 @@ const { initializeSocket } = require('./config/socket');
 const app = require('./app');
 const env = require('./config/env');
 const connectDB = require('./config/db');
+const TelegramService = require('./services/telegram.service');
 
 // Tạo HTTP server từ Express app (bắt buộc để gắn Socket.io vào chung cổng)
 const httpServer = http.createServer(app);
@@ -35,6 +36,7 @@ const startServer = async () => {
   httpServer.listen(env.PORT, () => {
     console.log(`🚀 Server đang chạy ở môi trường [${env.NODE_ENV}] - cổng ${env.PORT}`);
     console.log(`   API base URL: http://localhost:${env.PORT}/api/v1`);
+    TelegramService.startBot();
   });
 };
 

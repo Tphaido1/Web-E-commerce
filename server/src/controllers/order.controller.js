@@ -5,6 +5,7 @@ const Inventory = require('../models/Inventory.model');
 const Cart = require('../models/Cart.model');
 const Coupon = require('../models/Coupon.model');
 const EmailService = require('../services/email.service');
+const TelegramService = require('../services/telegram.service');
 const ApiResponse = require('../utils/apiResponse');
 const catchAsync = require('../utils/catchAsync');
 const { parseQuantity, resolveItemPrice, badRequest } = require('../utils/cartItem.util');
@@ -164,10 +165,14 @@ const checkout = catchAsync(async (req, res) => {
 
   // 6. THỰC HIỆN TRỪ TỒN KHO NGUYÊN TỬ KÈM CƠ CHẾ BỒI HOÀN FAIL-SAFE
   const successfullyDeducted = [];
+  const lowStockItems = [];
 
   try {
     for (const item of resolvedItems) {
       const inventoryDoc = await Inventory.deductStock(item.sku, item.quantity);
+      if (inventoryDoc && inventoryDoc.stock <= inventoryDoc.lowStockThreshold) {
+        lowStockItems.push(inventoryDoc);
+      }
       let source = 'inventory';
       if (!inventoryDoc) {
         const existingInventory = await Inventory.findOne({ sku: item.sku });
@@ -339,6 +344,13 @@ const checkout = catchAsync(async (req, res) => {
       createdAt: orderSaved.createdAt,
     });
     notifyOrderVendors(io, orderSaved, 'new_order');
+  }
+
+  if (typeof TelegramService.notifyNewOrder === 'function') {
+    TelegramService.notifyNewOrder(orderSaved);
+  }
+  if (typeof TelegramService.notifyLowStock === 'function') {
+    lowStockItems.forEach((inv) => TelegramService.notifyLowStock(inv));
   }
 
   return ApiResponse.success(res, 201, 'Đặt hàng thành công', orderSaved);
@@ -586,7 +598,72 @@ const updateOrderStatus = catchAsync(async (req, res) => {
     notifyOrderVendors(io, order, 'order_status_updated');
   }
 
+  if (typeof TelegramService.notifyOrderStatus === 'function') {
+    TelegramService.notifyOrderStatus(order, oldStatus);
+  }
+
   return ApiResponse.success(res, 200, `Cập nhật trạng thái đơn hàng thành [${status}] thành công`, sanitizeVendorOrder(order, req.user));
+});
+
+/**
+ * CẬP NHẬT TRẠNG THÁI THANH TOÁN (ADMIN / VENDOR - CHỈ ÁP DỤNG CHO COD)
+ * PATCH /api/v1/orders/:id/payment-status
+ */
+const updatePaymentStatus = catchAsync(async (req, res) => {
+  const { id } = req.params;
+  const { paymentStatus } = req.body;
+
+  const allowedPaymentStatuses = ['unpaid', 'paid', 'refunded'];
+  if (!allowedPaymentStatuses.includes(paymentStatus)) {
+    const error = new Error(`Trạng thái thanh toán không hợp lệ. Chỉ chấp nhận: ${allowedPaymentStatuses.join(', ')}`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const order = await Order.findById(id);
+  if (!order) {
+    const error = new Error('Không tìm thấy đơn hàng');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (!canViewVendorOrder(order, req.user)) throw Object.assign(new Error('Bạn không có quyền quản lý đơn hàng này'), { statusCode: 403 });
+  if (!canManageWholeOrder(order, req.user)) throw Object.assign(new Error('Đơn hàng có nhiều Vendor; Admin phải cập nhật trạng thái chung'), { statusCode: 409 });
+
+  if (order.paymentMethod !== 'COD') {
+    const error = new Error('Chỉ có thể cập nhật trạng thái thanh toán thủ công cho đơn hàng COD');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const oldPaymentStatus = order.paymentStatus;
+  order.paymentStatus = paymentStatus;
+  order.trackingHistory.push({
+    status: order.status,
+    note: `Trạng thái thanh toán chuyển từ [${oldPaymentStatus}] sang [${paymentStatus}]`,
+    updatedAt: new Date(),
+    updatedBy: req.user._id,
+  });
+
+  await order.save();
+
+  // Bắn sự kiện socket nếu có
+  const io = req.app.get('io');
+  if (io) {
+    io.to(`order_${order._id}`).emit('order_status_updated', {
+      orderId: order._id,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+    });
+    io.to('role_admin').emit('order_status_updated', {
+      orderId: order._id,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+    });
+    notifyOrderVendors(io, order, 'order_status_updated');
+  }
+
+  return ApiResponse.success(res, 200, `Cập nhật trạng thái thanh toán thành [${paymentStatus}] thành công`, sanitizeVendorOrder(order, req.user));
 });
 
 module.exports = {
@@ -596,4 +673,5 @@ module.exports = {
   trackOrderByCode,
   getAllOrders,
   updateOrderStatus,
+  updatePaymentStatus,
 };

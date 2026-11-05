@@ -10,4 +10,8 @@ export const orderService = {
     const response = await api.patch(`/orders/${id}/status`, payload);
     return response.data.data;
   },
+  async updatePaymentStatus(id, payload) {
+    const response = await api.patch(`/orders/${id}/payment-status`, payload);
+    return response.data.data;
+  },
 };
